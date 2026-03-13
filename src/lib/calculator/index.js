@@ -11,8 +11,8 @@ import { calcAllSegments }                                    from './vertical.j
 import { emptyPipeMap, addHorizontalPipes, addVerticalPipes, addBranchPipes } from './pipes.js';
 import { calcElbows, calcShaftFittings, applyFittingsToQty } from './fittings.js';
 import { processKolektorRows }                               from './kollector.js';
-import { pirVanaId, pprVanaId }                              from './mechanical.js';
-import { applyHidroforToQty, applyBoylerToQty, applyBdToQty, applyFixedMechToQty } from './mechanical.js';
+import { pirVanaId }                                         from './kollector.js';
+import { pprVanaId, applyHidroforToQty, applyBoylerToQty, applyBdToQty, applyFixedMechToQty } from './mechanical.js';
 import { calcCost }                                          from './cost.js';
 import { PRICES }                                            from './constants.js';
 
