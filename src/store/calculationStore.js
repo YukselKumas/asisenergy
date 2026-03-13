@@ -1,0 +1,193 @@
+// ── Hesaplama Store (Zustand) ──────────────────────────────────────────
+// Wizard'ın tüm form state'ini tek bir yerde tutar.
+// Her adım bu store'dan okur ve yazar.
+// "Kaydet" butonuna basınca Supabase'e config JSONB olarak yazılır.
+
+import { create } from 'zustand';
+import { supabase } from '../lib/supabase.js';
+
+/** Varsayılan form değerleri — yeni hesaplama başlatıldığında kullanılır */
+export const DEFAULT_CONFIG = {
+  // Adım 1 — Sistem Tanımı
+  hasHot:   true,
+  hasCirc:  true,
+  hasCold:  true,
+  markaPpr:     'kalde',
+  markaPirince: 'standart',
+  markaBd:      'caleffi',
+  markaFiltre:  'kalde',
+  floor:        10,
+  flatcheck:    40,
+  firstFloor:   1,
+  floorH:       3,
+  shaft:        4,
+
+  // Mekanik oda
+  depoAdet:       1,
+  depoHacim:      20,
+  depoMat:        'polietilen',
+  depoDiam:       'q75',
+  hidroforAdet:   1,
+  hidroforDiam:   'q50',
+  hidroforVana:   'pirince',
+  hidroforCv:     'evet',
+  hidroforUnion:  'evet',
+  hidroforUnionDiam: 'q50',
+  hidroforMano:   1,
+  emisDiam:       'q75',
+  emisVana:       'evet',
+  emisFilt:       'evet',
+  emisNip:        'evet',
+  boylerAdet:     1,
+  boylerDiam:     'q50',
+  boylerVana:     'pirince',
+  tankAdet:       1,
+  pump:           1,
+  mano:           2,
+  air:            2,
+  mainf:          2,
+  mainfDiam:      'f114',
+
+  // Adım 2 — Boru Güzergahı
+  hyHotStart: 'q75', hyHotL1: 30, hyHotD2: 'q63', hyHotL2: 30, hyHotD3: '', hyHotL3: 0,
+  hyColdStart:'q75', hyColdL1:30, hyColdD2:'q63', hyColdL2:30, hyColdD3:'', hyColdL3:0,
+  circDiam:    'q40',
+  circYatay:   60,
+  circDikey:   40,
+  circFlat:    1,
+  vertSonCount: 3,
+  vertStep:     4,
+
+  // Çok sonlu şaft sistemi
+  sons: [
+    { from:1, to:4,  startDiam:'q63', minDiam:'q25', bdAktif:'evet', bdDiam:'34', bdTo:4  },
+    { from:5, to:8,  startDiam:'q50', minDiam:'q25', bdAktif:'evet', bdDiam:'34', bdTo:8  },
+    { from:9, to:10, startDiam:'q40', minDiam:'q25', bdAktif:'evet', bdDiam:'34', bdTo:10 },
+  ],
+
+  // Şaft başı vanalar
+  shaftVanaMat:  'pirince',
+  shaftVanaDiam: 'q63',
+  shaftVanaAdet: 1,
+  shaft4katCk:   false,
+
+  // Branşman
+  brDiam:  'q25',
+  brHot:   2,
+  brCold:  2,
+  dHotmeter:  1,
+  dColdmeter: 1,
+  dAda:    1,
+  dFilt:   1,
+  dCv:     1,
+  dNip:    2,
+  dSaatrek:1,
+  dValve:  1,
+
+  // Kolektörler
+  kolektors: [],
+
+  // Adım 3 — Kat dağılımı
+  floors: [],  // [{floor: 1, count: 4}, ...]
+
+  // Adım 4 — Katsayılar
+  katsayilar: {
+    h75:1.0, h63:1.5, h50:1.5, h40:2.0, h32:2.0, h25:2.0,
+    v75:0.5, v63:0.5, v50:0.8, v40:1.0, v32:1.0, v25:1.2,
+    kTee:3, kItee:2, kRed:3, kCous:3,
+  },
+
+  // Adım 5 — Fiyat geçersizlemeleri
+  priceOverride: {},  // {product_id: {list, disc}}
+  kdvRate: 0.20,
+};
+
+export const useCalculationStore = create((set, get) => ({
+  // ── State ──────────────────────────────────────────────────────────
+  config:     { ...DEFAULT_CONFIG },
+  result:     null,    // Son hesaplama çıktısı
+  projectId:  null,    // Kaydedilmiş proje UUID'si
+  projectName:'',      // Proje adı
+  isDirty:    false,   // Kaydedilmemiş değişiklik var mı?
+  isSaving:   false,
+
+  // ── Config güncelleme ─────────────────────────────────────────────
+
+  /** Tek veya birden fazla config alanını güncelle */
+  setConfig: (partial) => set(state => ({
+    config:  { ...state.config, ...partial },
+    isDirty: true,
+  })),
+
+  /** Sonucu kaydet */
+  setResult: (result) => set({ result }),
+
+  /** Yeni hesaplama — state'i sıfırla */
+  newCalculation: () => set({
+    config:     { ...DEFAULT_CONFIG },
+    result:     null,
+    projectId:  null,
+    projectName:'',
+    isDirty:    false,
+  }),
+
+  /** Kaydedilmiş projeyi yükle */
+  loadProject: (project) => set({
+    config:     { ...DEFAULT_CONFIG, ...project.config },
+    result:     project.result || null,
+    projectId:  project.id,
+    projectName:project.name,
+    isDirty:    false,
+  }),
+
+  // ── Supabase kayıt işlemleri ──────────────────────────────────────
+
+  /** Projeyi Supabase'e kaydet (yeni veya güncelle) */
+  saveProject: async (userId, name, description) => {
+    set({ isSaving: true });
+    const { config, result, projectId } = get();
+
+    const payload = {
+      name:        name || get().projectName || 'İsimsiz Proje',
+      description: description || null,
+      created_by:  userId,
+      config,
+      result,
+      status:      result ? 'completed' : 'draft',
+      updated_at:  new Date().toISOString(),
+    };
+
+    let id = projectId;
+
+    if (id) {
+      // Güncelle
+      const { error } = await supabase.from('projects').update(payload).eq('id', id);
+      if (error) { set({ isSaving: false }); throw error; }
+    } else {
+      // Yeni kayıt
+      const { data, error } = await supabase.from('projects').insert(payload).select().single();
+      if (error) { set({ isSaving: false }); throw error; }
+      id = data.id;
+    }
+
+    set({ projectId: id, projectName: payload.name, isDirty: false, isSaving: false });
+    return id;
+  },
+
+  /** Hesaplama geçmişine kayıt ekle */
+  saveHistory: async (userId, result) => {
+    const { config, projectId } = get();
+    if (!projectId) return;
+
+    await supabase.from('calculation_history').insert({
+      project_id:          projectId,
+      calculated_by:       userId,
+      input_snapshot:      config,
+      result_snapshot:     result,
+      total_amount_kdvsiz: result.grandNet,
+      total_amount_kdvli:  result.grandTotal,
+      total_pipe_m:        result.totalPipe,
+      total_flats:         result.totalFlats,
+    });
+  },
+}));

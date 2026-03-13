@@ -1,0 +1,64 @@
+/* ── Renk & Tasarım Değişkenleri ──────────────────────────────────────────
+   Tüm tema burada tanımlanır. Bileşenler bu değişkenlere referans verir.
+   ──────────────────────────────────────────────────────────────────────── */
+:root {
+  /* Arkaplanlar */
+  --bg: #f1f5f9;
+  --white: #fff;
+
+  /* Kenarlıklar */
+  --border: #dde4ed;
+  --border2: #c8d4e3;
+
+  /* Ana metin renkleri */
+  --text: #1a2233;
+  --muted: #64748b;
+  --muted2: #94a3b8;
+
+  /* Sıcak su hattı — kırmızı ton */
+  --hot: #d93a0a;
+  --hot-bg: #fff4f0;
+  --hot-b: #fac8b4;
+
+  /* Sirkülasyon hattı — mor ton */
+  --circ: #6d28d9;
+  --circ-bg: #f5f3ff;
+  --circ-b: #ddd6fe;
+
+  /* Soğuk su hattı — mavi ton */
+  --cold: #0369a1;
+  --cold-bg: #f0f9ff;
+  --cold-b: #bae6fd;
+
+  /* Vurgu (accent) — koyu mavi */
+  --acc: #1d4ed8;
+  --acc-bg: #eff4ff;
+  --acc-b: #bfdbfe;
+
+  /* Başarı — yeşil */
+  --green: #15803d;
+  --green-bg: #f0fdf4;
+  --green-b: #bbf7d0;
+
+  /* Uyarı — amber/sarı */
+  --warn: #92400e;
+  --warn-bg: #fffbeb;
+  --warn-b: #fde68a;
+
+  /* Hata */
+  --red: #dc2626;
+
+  /* Border-radius */
+  --r: 10px;
+  --r2: 7px;
+
+  /* Fontlar */
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'Plus Jakarta Sans', sans-serif;
+
+  /* Gölge */
+  --sh: 0 1px 3px rgba(0, 0, 0, 0.07), 0 4px 14px rgba(0, 0, 0, 0.04);
+
+  /* Kenar çubuğu genişliği */
+  --sidebar-w: 220px;
+}
