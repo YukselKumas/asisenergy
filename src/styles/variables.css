@@ -1,64 +1,71 @@
 /* ── Renk & Tasarım Değişkenleri ──────────────────────────────────────────
-   Tüm tema burada tanımlanır. Bileşenler bu değişkenlere referans verir.
+   Modern, profesyonel tema. Tüm bileşenler bu değişkenlere referans verir.
    ──────────────────────────────────────────────────────────────────────── */
 :root {
   /* Arkaplanlar */
-  --bg: #f1f5f9;
-  --white: #fff;
+  --bg:    #f8fafc;
+  --bg2:   #f1f5f9;
+  --white: #ffffff;
 
   /* Kenarlıklar */
-  --border: #dde4ed;
-  --border2: #c8d4e3;
+  --border:  #e2e8f0;
+  --border2: #cbd5e1;
 
-  /* Ana metin renkleri */
-  --text: #1a2233;
-  --muted: #64748b;
+  /* Metin renkleri */
+  --text:   #0f172a;
+  --muted:  #64748b;
   --muted2: #94a3b8;
 
-  /* Sıcak su hattı — kırmızı ton */
-  --hot: #d93a0a;
-  --hot-bg: #fff4f0;
-  --hot-b: #fac8b4;
+  /* Sıcak su hattı — kırmızı */
+  --hot:    #e11d48;
+  --hot-bg: #fff1f2;
+  --hot-b:  #fecdd3;
 
-  /* Sirkülasyon hattı — mor ton */
-  --circ: #6d28d9;
+  /* Sirkülasyon — mor */
+  --circ:    #7c3aed;
   --circ-bg: #f5f3ff;
-  --circ-b: #ddd6fe;
+  --circ-b:  #ddd6fe;
 
-  /* Soğuk su hattı — mavi ton */
-  --cold: #0369a1;
+  /* Soğuk su — mavi */
+  --cold:    #0284c7;
   --cold-bg: #f0f9ff;
-  --cold-b: #bae6fd;
+  --cold-b:  #bae6fd;
 
-  /* Vurgu (accent) — koyu mavi */
-  --acc: #1d4ed8;
-  --acc-bg: #eff4ff;
-  --acc-b: #bfdbfe;
+  /* Ana vurgu — indigo */
+  --acc:    #4f46e5;
+  --acc-h:  #4338ca;
+  --acc-bg: #eef2ff;
+  --acc-b:  #c7d2fe;
 
   /* Başarı — yeşil */
-  --green: #15803d;
+  --green:    #16a34a;
   --green-bg: #f0fdf4;
-  --green-b: #bbf7d0;
+  --green-b:  #bbf7d0;
 
-  /* Uyarı — amber/sarı */
-  --warn: #92400e;
+  /* Uyarı — amber */
+  --warn:    #d97706;
   --warn-bg: #fffbeb;
-  --warn-b: #fde68a;
+  --warn-b:  #fde68a;
 
   /* Hata */
-  --red: #dc2626;
+  --red:    #dc2626;
+  --red-bg: #fef2f2;
+  --red-b:  #fecaca;
 
   /* Border-radius */
-  --r: 10px;
-  --r2: 7px;
+  --r:  12px;
+  --r2:  8px;
+  --r3:  6px;
 
   /* Fontlar */
   --mono: 'IBM Plex Mono', monospace;
   --sans: 'Plus Jakarta Sans', sans-serif;
 
-  /* Gölge */
-  --sh: 0 1px 3px rgba(0, 0, 0, 0.07), 0 4px 14px rgba(0, 0, 0, 0.04);
+  /* Gölgeler */
+  --sh-sm: 0 1px 2px rgba(0,0,0,0.05);
+  --sh:    0 1px 3px rgba(0,0,0,0.07), 0 6px 20px rgba(0,0,0,0.05);
+  --sh-lg: 0 4px 6px rgba(0,0,0,0.05), 0 12px 32px rgba(0,0,0,0.08);
 
   /* Kenar çubuğu genişliği */
-  --sidebar-w: 220px;
+  --sidebar-w: 240px;
 }
