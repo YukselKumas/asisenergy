@@ -58,13 +58,13 @@ export function Step1System({ goStep }) {
       {/* Hat Seçimi */}
       <Card accent="acc" title="Sistemdeki Hatları İşaretleyin" badge="1">
         <p style={{ fontSize:12, color:'var(--muted)', marginBottom:14 }}>
-          Mekanik odadan çıkan hatları seçin.
+          Mekanik odadan çıkan hatları seçin. Sıcak Su ve Sirkülasyon birlikte seçilir.
         </p>
         <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:10 }}>
+          {/* Sıcak Su + Sirkülasyon — birlikte toggle */}
           {[
             { id:'hasHot',  label:'🔴 Sıcak Su', color:'var(--hot)' },
             { id:'hasCirc', label:'🟣 Sirkülasyon', color:'var(--circ)' },
-            { id:'hasCold', label:'🔵 Soğuk Su', color:'var(--cold)' },
           ].map(hat => (
             <label
               key={hat.id}
@@ -82,12 +82,35 @@ export function Step1System({ goStep }) {
                 type="checkbox"
                 style={{ display:'none' }}
                 checked={c[hat.id]}
-                onChange={e => upd(hat.id, e.target.checked)}
+                onChange={e => {
+                  const v = e.target.checked;
+                  setConfig({ hasHot: v, hasCirc: v });
+                }}
               />
               {hat.label}
             </label>
           ))}
+          {/* Soğuk Su — bağımsız */}
+          <label
+            style={{
+              display:'flex', alignItems:'center', gap:8,
+              padding:'10px 16px', borderRadius:'var(--r2)',
+              border: `1.5px solid ${c.hasCold ? 'var(--cold)' : 'var(--border)'}`,
+              background: c.hasCold ? 'rgba(0,0,0,0.04)' : 'var(--white)',
+              cursor:'pointer', fontWeight:600, fontSize:13,
+              color: c.hasCold ? 'var(--cold)' : 'var(--muted)',
+              userSelect:'none',
+            }}
+          >
+            <input type="checkbox" style={{ display:'none' }} checked={c.hasCold} onChange={e => upd('hasCold', e.target.checked)} />
+            🔵 Soğuk Su
+          </label>
         </div>
+        {c.hasHot && (
+          <div style={{ fontSize:11, color:'var(--muted)', marginTop:4 }}>
+            ℹ Sıcak su seçildiğinde sirkülasyon hattı otomatik aktif olur.
+          </div>
+        )}
       </Card>
 
       {/* Bina Bilgileri */}

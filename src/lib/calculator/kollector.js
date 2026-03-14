@@ -40,6 +40,7 @@ export function cvId(vd) {
   if (vd === 'q32') return 'cv1';
   if (vd === 'q40') return 'cv114';
   if (vd === 'q50') return 'cv112';
+  if (vd === 'q63') return 'cv112';
   return 'cv2';
 }
 

@@ -19,7 +19,7 @@ export const DEFAULT_CONFIG = {
   floor:        10,
   flatcheck:    40,
   firstFloor:   1,
-  floorH:       3,
+  floorH:       4,
   shaft:        4,
 
   // Mekanik oda
