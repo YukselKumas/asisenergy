@@ -272,7 +272,7 @@ export function Step2Pipeline({ goStep }) {
           </Field>
           <Field label="Hat Başı Vana Çapı">
             <select value={c.shaftVanaDiam} onChange={e => upd('shaftVanaDiam', e.target.value)}>
-              {['q40','q50','q63','q75'].map(d=><option key={d} value={d}>{DIAM_LABEL[d]}</option>)}
+              {['q25','q32','q40','q50','q63','q75','q90'].map(d=><option key={d} value={d}>{DIAM_LABEL[d]}</option>)}
             </select>
           </Field>
           <Field label="Şaft Başı Vana Adedi / Hat" hint="Toplam = adet × şaft × hat">

@@ -172,11 +172,14 @@ export function Step1System({ goStep }) {
           </Field>
           <Field label="Pompa Çıkış Çapı">
             <select value={c.hidroforDiam} onChange={e => upd('hidroforDiam', e.target.value)}>
+              <option value="q25">Q25 — ¾"</option>
               <option value="q32">Q32 — 1"</option>
               <option value="q40">Q40 — 1¼"</option>
               <option value="q50">Q50 — 1½"</option>
               <option value="q63">Q63 — 2"</option>
               <option value="q75">Q75 — 2½"</option>
+              <option value="q90">Q90 — 3"</option>
+              <option value="q110">Q110 — 4"</option>
             </select>
           </Field>
           <Field label="Pompa Çıkış Vanası" hint="Her pompa başına 2 adet">
@@ -250,10 +253,13 @@ export function Step1System({ goStep }) {
             </Field>
             <Field label="Boyler Bağlantı Çapı">
               <select value={c.boylerDiam} onChange={e => upd('boylerDiam', e.target.value)}>
-                <option value="q40">Q40</option>
-                <option value="q50">Q50</option>
-                <option value="q63">Q63</option>
-                <option value="q75">Q75</option>
+                <option value="q32">Q32 — 1"</option>
+                <option value="q40">Q40 — 1¼"</option>
+                <option value="q50">Q50 — 1½"</option>
+                <option value="q63">Q63 — 2"</option>
+                <option value="q75">Q75 — 2½"</option>
+                <option value="q90">Q90 — 3"</option>
+                <option value="q110">Q110 — 4"</option>
               </select>
             </Field>
             <Field label="Boyler Çıkış Vanası">
@@ -290,6 +296,9 @@ export function Step1System({ goStep }) {
               <option value="f114">1¼" (DN32)</option>
               <option value="f112">1½" (DN40)</option>
               <option value="f2">2" (DN50)</option>
+              <option value="f212">2½" (DN65)</option>
+              <option value="f3">3" (DN80)</option>
+              <option value="f4">4" (DN100)</option>
             </select>
           </Field>
         </div>
