@@ -41,12 +41,22 @@ export const useAuthStore = create((set, get) => ({
 
   /** Yeni kullanıcı kaydı */
   signUp: async (email, password, name) => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: { data: { name } },
     });
     if (error) throw error;
+    // Profiles tablosuna email + name kaydet
+    if (data?.user) {
+      await supabase.from('profiles').upsert({
+        id: data.user.id,
+        email,
+        name,
+        role: 'user',
+        is_active: true,
+      });
+    }
   },
 
   /** Çıkış */

@@ -1,17 +1,17 @@
 // ── UsersPage — Kullanıcı Yönetimi (Admin) ────────────────────────────
-// Tüm kullanıcıları listeler; rol ve durum değiştirme, şifre sıfırlama.
-
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { showToast } from '../components/ui/Toast.jsx';
-import { Button } from '../components/ui/Button.jsx';
 
 const TR_DATE = d => new Date(d).toLocaleDateString('tr-TR');
 
 export function UsersPage() {
-  const [users,   setUsers]   = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [saving,  setSaving]  = useState(null); // userId
+  const [users,       setUsers]       = useState([]);
+  const [loading,     setLoading]     = useState(true);
+  const [saving,      setSaving]      = useState(null);   // userId
+  // emailEdit: { [userId]: string } — inline email düzenleme
+  const [emailEdit,   setEmailEdit]   = useState({});
+  const [resetLoading, setResetLoading] = useState(null); // userId
 
   useEffect(() => { fetchUsers(); }, []);
 
@@ -40,12 +40,24 @@ export function UsersPage() {
     setSaving(null);
   }
 
-  async function sendPasswordReset(email) {
+  async function saveEmail(userId) {
+    const email = (emailEdit[userId] || '').trim();
+    if (!email || !email.includes('@')) {
+      showToast('Geçerli bir email girin');
+      return;
+    }
+    await updateProfile(userId, { email });
+    setEmailEdit(prev => { const n = { ...prev }; delete n[userId]; return n; });
+  }
+
+  async function sendPasswordReset(userId, email) {
+    setResetLoading(userId);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: window.location.origin + '/reset-password',
     });
     if (error) showToast('Hata: ' + error.message);
     else showToast(`Şifre sıfırlama maili gönderildi → ${email}`);
+    setResetLoading(null);
   }
 
   const roleColor = r => r === 'admin'
@@ -81,8 +93,11 @@ export function UsersPage() {
         </div>
       </div>
 
-      {/* Kullanıcı tablosu */}
-      <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 'var(--r)', overflow: 'hidden', boxShadow: 'var(--sh)' }}>
+      {/* Tablo */}
+      <div style={{
+        background: 'var(--white)', border: '1px solid var(--border)',
+        borderRadius: 'var(--r)', overflow: 'hidden', boxShadow: 'var(--sh)',
+      }}>
         {loading ? (
           <div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
             Yükleniyor...
@@ -101,14 +116,16 @@ export function UsersPage() {
                   <th>Rol</th>
                   <th>Durum</th>
                   <th>Kayıt Tarihi</th>
-                  <th>İşlemler</th>
+                  <th>Şifre Sıfırla</th>
                 </tr>
               </thead>
               <tbody>
                 {users.map(u => {
-                  const isSaving = saving === u.id;
-                  const isActive = u.is_active !== false;
-                  const initials = (u.name || u.email || 'U')
+                  const isSaving   = saving === u.id;
+                  const isResetting = resetLoading === u.id;
+                  const isActive   = u.is_active !== false;
+                  const isEditingEmail = u.id in emailEdit;
+                  const initials   = (u.name || u.email || 'U')
                     .split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 
                   return (
@@ -123,14 +140,56 @@ export function UsersPage() {
                             fontSize: 11, fontWeight: 800, color: '#fff',
                           }}>{initials}</div>
                           <span style={{ fontWeight: 600, fontSize: 13 }}>
-                            {u.name || '—'}
+                            {u.name || <span style={{ color: 'var(--muted)' }}>—</span>}
                           </span>
                         </div>
                       </td>
 
-                      {/* Email */}
-                      <td style={{ color: 'var(--muted)', fontSize: 12, fontFamily: 'var(--mono)' }}>
-                        {u.email || '—'}
+                      {/* Email — boşsa inline input */}
+                      <td style={{ fontSize: 12, fontFamily: 'var(--mono)' }}>
+                        {u.email && !isEditingEmail ? (
+                          <span
+                            title="Değiştirmek için tıkla"
+                            style={{ cursor: 'pointer', color: 'var(--muted)' }}
+                            onClick={() => setEmailEdit(p => ({ ...p, [u.id]: u.email }))}
+                          >
+                            {u.email}
+                          </span>
+                        ) : (
+                          <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                            <input
+                              type="email"
+                              placeholder="email@sirket.com"
+                              value={emailEdit[u.id] ?? ''}
+                              onChange={e => setEmailEdit(p => ({ ...p, [u.id]: e.target.value }))}
+                              onKeyDown={e => { if (e.key === 'Enter') saveEmail(u.id); if (e.key === 'Escape') setEmailEdit(p => { const n={...p}; delete n[u.id]; return n; }); }}
+                              autoFocus
+                              style={{
+                                width: 170, padding: '3px 7px', fontSize: 12, borderRadius: 5,
+                                border: '1.5px solid #4f46e5', outline: 'none',
+                                fontFamily: 'var(--mono)', background: '#f8fafc',
+                              }}
+                            />
+                            <button
+                              onClick={() => saveEmail(u.id)}
+                              disabled={isSaving}
+                              style={{
+                                background: '#4f46e5', color: '#fff', border: 'none',
+                                borderRadius: 5, padding: '3px 8px', fontSize: 11,
+                                cursor: 'pointer', fontWeight: 700,
+                              }}
+                            >Kaydet</button>
+                            {u.email && (
+                              <button
+                                onClick={() => setEmailEdit(p => { const n={...p}; delete n[u.id]; return n; })}
+                                style={{
+                                  background: 'none', border: 'none', cursor: 'pointer',
+                                  color: 'var(--muted)', fontSize: 14, lineHeight: 1,
+                                }}
+                              >✕</button>
+                            )}
+                          </div>
+                        )}
                       </td>
 
                       {/* Rol */}
@@ -158,7 +217,7 @@ export function UsersPage() {
                           disabled={isSaving}
                           style={{
                             background: isActive ? 'var(--green-bg)' : 'var(--bg)',
-                            color: isActive ? 'var(--green)' : 'var(--muted)',
+                            color:      isActive ? 'var(--green)'    : 'var(--muted)',
                             border: `1px solid ${isActive ? 'var(--green-b)' : 'var(--border)'}`,
                             borderRadius: 6, padding: '3px 10px', fontSize: 11,
                             fontWeight: 700, cursor: 'pointer',
@@ -173,16 +232,32 @@ export function UsersPage() {
                         {TR_DATE(u.created_at)}
                       </td>
 
-                      {/* İşlemler */}
+                      {/* Şifre Sıfırla */}
                       <td>
-                        <Button
-                          variant="default"
-                          disabled={!u.email || isSaving}
-                          onClick={() => sendPasswordReset(u.email)}
-                          style={{ padding: '4px 10px', fontSize: 11 }}
-                        >
-                          Şifre Sıfırla
-                        </Button>
+                        {u.email ? (
+                          <button
+                            disabled={isResetting}
+                            onClick={() => sendPasswordReset(u.id, u.email)}
+                            style={{
+                              background: isResetting ? 'var(--bg)' : '#fff',
+                              color: '#4f46e5',
+                              border: '1.5px solid #4f46e5',
+                              borderRadius: 6, padding: '4px 10px', fontSize: 11,
+                              fontWeight: 700, cursor: isResetting ? 'not-allowed' : 'pointer',
+                              opacity: isResetting ? 0.6 : 1,
+                            }}
+                          >
+                            {isResetting ? '...' : 'Şifre Sıfırla'}
+                          </button>
+                        ) : (
+                          <span
+                            style={{ fontSize: 11, color: '#f59e0b', cursor: 'pointer', fontWeight: 600 }}
+                            title="Email eklemek için Email sütununa tıkla"
+                            onClick={() => setEmailEdit(p => ({ ...p, [u.id]: '' }))}
+                          >
+                            ⚠ Email gir
+                          </span>
+                        )}
                       </td>
                     </tr>
                   );
@@ -194,9 +269,8 @@ export function UsersPage() {
       </div>
 
       <div className="al al-i" style={{ marginTop: 16 }}>
-        <strong>Not:</strong> Yeni kullanıcılar giriş ekranındaki "Kayıt Ol" sekmesinden hesap açabilir.
-        Rol varsayılan olarak <strong>Kullanıcı</strong> atanır — sadece hesaplama yapabilirler.
-        Admin rolü yalnızca bu sayfadan verilebilir.
+        <strong>Not:</strong> Yeni kullanıcılar "Kayıt Ol" sekmesinden hesap açabilir. Email eksik kullanıcılar için
+        email sütununa tıklayarak adres ekleyebilirsiniz.
       </div>
     </div>
   );
