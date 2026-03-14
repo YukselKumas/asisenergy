@@ -27,7 +27,7 @@ export function calculate(config, priceOverride = {}) {
   const {
     shaft, floorH, kdvRate,
     hasHot, hasCirc, hasCold,
-    sons, vertStep,
+    sons, vertStep, vertSonCount,
     totalFlats, floors,
     hyHotStart, hyHotL1, hyHotD2, hyHotL2, hyHotD3, hyHotL3,
     hyColdStart, hyColdL1, hyColdD2, hyColdL2, hyColdD3, hyColdL3,
@@ -44,13 +44,16 @@ export function calculate(config, priceOverride = {}) {
   } = config;
 
   if (!totalFlats || totalFlats <= 0) {
-    throw new Error('Toplam daire sayısı 0 olamaz. Kat dağılımını kontrol edin.');
+    throw new Error('Toplam daire sayısı 0 olamaz. Adım 3 — Kat Dağılımı\'na geçip daire sayılarını girin.');
   }
 
   const hatSay = (hasHot ? 1 : 0) + (hasCirc ? 1 : 0) + (hasCold ? 1 : 0);
 
+  // Aktif son sayısına göre dilimle (1 son, 2 son, 3 son)
+  const activeSons = (sons || []).slice(0, vertSonCount || (sons || []).length);
+
   // ── 1. Dikey segmentler ────────────────────────────────────────────
-  const allSegs = calcAllSegments(sons, floorH, vertStep);
+  const allSegs = calcAllSegments(activeSons, floorH || 4, vertStep);
 
   // ── 2. Boru haritası ───────────────────────────────────────────────
   const pipe = emptyPipeMap();
@@ -165,7 +168,7 @@ export function calculate(config, priceOverride = {}) {
     emisDiam, emisVana, emisNip, emisFilt,
   });
   applyBoylerToQty(QTY, { boylerAdet, boylerDiam, boylerVana });
-  applyBdToQty(QTY, sons, floors);
+  applyBdToQty(QTY, activeSons, floors);
   applyFixedMechToQty(QTY, { pump, mano, air, mainf, mainfDiam });
 
   // ── 11. Maliyet ───────────────────────────────────────────────────

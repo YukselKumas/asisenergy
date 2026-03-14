@@ -27,13 +27,17 @@ export function Step2Pipeline({ goStep }) {
     const cur  = c.sons || [];
     const def  = { from:1, to:4, startDiam:'q63', minDiam:'q25', bdAktif:'evet', bdDiam:'34', bdTo:4 };
     const next = Array.from({ length: count }, (_, i) => cur[i] || { ...def, from: i*5+1, to: (i+1)*5 });
+    // 1 son (tek kolon) seçildiğinde bitiş katı = bina kat sayısı
+    if (count === 1) {
+      next[0] = { ...next[0], to: c.floor || next[0].to, bdTo: c.floor || next[0].bdTo };
+    }
     setConfig({ vertSonCount: count, sons: next });
   }
 
   function sonPreview(son) {
     const fl = Math.max(0, son.to - son.from + 1);
     if (fl <= 0) return '⚠ Geçersiz kat aralığı';
-    const segs = calcVertSegments(fl, c.floorH || 3, c.vertStep || 4, son.startDiam, son.minDiam);
+    const segs = calcVertSegments(fl, c.floorH || 4, c.vertStep || 4, son.startDiam, son.minDiam);
     return segs.map(s => `${DIAM_LABEL[s.diam]}: ${son.from + s.katFrom - 1}–${son.from + s.katTo - 1}. kat (${s.m.toFixed(1)} m/şaft)`).join(' | ');
   }
 
