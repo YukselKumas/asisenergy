@@ -39,6 +39,16 @@ export const useAuthStore = create((set, get) => ({
     if (error) throw error;
   },
 
+  /** Yeni kullanıcı kaydı */
+  signUp: async (email, password, name) => {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { name } },
+    });
+    if (error) throw error;
+  },
+
   /** Çıkış */
   signOut: async () => {
     await supabase.auth.signOut();

@@ -9,6 +9,7 @@ import { DashboardPage }      from './pages/DashboardPage.jsx';
 import { NewCalculationPage } from './pages/NewCalculationPage.jsx';
 import { HistoryPage }        from './pages/HistoryPage.jsx';
 import { DefinitionsPage }    from './pages/DefinitionsPage.jsx';
+import { UsersPage }          from './pages/UsersPage.jsx';
 
 export const router = createBrowserRouter([
   {
@@ -16,7 +17,6 @@ export const router = createBrowserRouter([
     element: <LoginPage />,
   },
   {
-    // Giriş gerektiren tüm sayfalar Layout içinde sarmalanır
     element: <RequireAuth><Layout /></RequireAuth>,
     children: [
       { index: true,              element: <DashboardPage /> },
@@ -24,6 +24,7 @@ export const router = createBrowserRouter([
       { path: 'hesaplama/:id',    element: <NewCalculationPage /> },
       { path: 'gecmis',           element: <HistoryPage /> },
       { path: 'tanimlamalar',     element: <DefinitionsPage /> },
+      { path: 'kullanicilar',     element: <UsersPage /> },
     ],
   },
 ]);
