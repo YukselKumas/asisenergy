@@ -4,9 +4,10 @@
 import { useEffect } from 'react';
 import { useCalculationStore } from '../../store/calculationStore.js';
 import { useDefinitionsStore } from '../../store/definitionsStore.js';
-import { Card }   from '../ui/Card.jsx';
-import { Field }  from '../ui/Field.jsx';
-import { Button } from '../ui/Button.jsx';
+import { Card }        from '../ui/Card.jsx';
+import { Field }       from '../ui/Field.jsx';
+import { Button }      from '../ui/Button.jsx';
+import { GlassSelect } from '../ui/GlassSelect.jsx';
 
 export function Step1System({ goStep }) {
   const { config, setConfig, loadBrandPrices } = useCalculationStore();
@@ -29,36 +30,36 @@ export function Step1System({ goStep }) {
         </p>
         <div className="g g4">
           <Field label="PPR Boru & Bağlantı" hint="Boru, dirsek, te, redüksiyon">
-            <select value={c.markaPpr} onChange={e => { upd('markaPpr', e.target.value); loadBrandPrices('ppr', e.target.value); }}>
+            <GlassSelect value={c.markaPpr} onChange={e => { upd('markaPpr', e.target.value); loadBrandPrices('ppr', e.target.value); }}>
               <option value="">— Marka seçin —</option>
               {brands.filter(b => b.category === 'ppr').map(b =>
                 <option key={b.id} value={b.id}>{b.name}</option>
               )}
-            </select>
+            </GlassSelect>
           </Field>
           <Field label="Pirinç Küresel Vana" hint="Kolektör çıkış, emiş hattı">
-            <select value={c.markaPirince} onChange={e => { upd('markaPirince', e.target.value); loadBrandPrices('valve', e.target.value); }}>
+            <GlassSelect value={c.markaPirince} onChange={e => { upd('markaPirince', e.target.value); loadBrandPrices('valve', e.target.value); }}>
               <option value="">— Marka seçin —</option>
               {brands.filter(b => b.category === 'valve').map(b =>
                 <option key={b.id} value={b.id}>{b.name}</option>
               )}
-            </select>
+            </GlassSelect>
           </Field>
           <Field label="Basınç Düşürücü" hint="Daire başı BD">
-            <select value={c.markaBd} onChange={e => { upd('markaBd', e.target.value); loadBrandPrices('bd', e.target.value); }}>
+            <GlassSelect value={c.markaBd} onChange={e => { upd('markaBd', e.target.value); loadBrandPrices('bd', e.target.value); }}>
               <option value="">— Marka seçin —</option>
               {brands.filter(b => b.category === 'bd').map(b =>
                 <option key={b.id} value={b.id}>{b.name}</option>
               )}
-            </select>
+            </GlassSelect>
           </Field>
           <Field label="Filtre & Çekvalf">
-            <select value={c.markaFiltre} onChange={e => { upd('markaFiltre', e.target.value); loadBrandPrices('filter', e.target.value); }}>
+            <GlassSelect value={c.markaFiltre} onChange={e => { upd('markaFiltre', e.target.value); loadBrandPrices('filter', e.target.value); }}>
               <option value="">— Marka seçin —</option>
               {brands.filter(b => b.category === 'filter').map(b =>
                 <option key={b.id} value={b.id}>{b.name}</option>
               )}
-            </select>
+            </GlassSelect>
           </Field>
         </div>
       </Card>
