@@ -197,17 +197,17 @@ export function Step2Pipeline({ goStep }) {
             {/* BD satırı */}
             <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', marginTop:10, padding:'8px 12px', background:'var(--white)', border:'1px solid var(--border2)', borderRadius:'var(--r2)' }}>
               <span style={{ fontSize:11, fontWeight:700, color:'var(--cold)', textTransform:'uppercase' }}>Basınç Düşürücü</span>
-              <select value={son.bdAktif} onChange={e => updSon(i,'bdAktif',e.target.value)} style={{ border:'1px solid var(--border2)', borderRadius:5, padding:'4px 8px', fontSize:12, outline:'none', background:'var(--white)' }}>
+              <select value={son.bdAktif} onChange={e => updSon(i,'bdAktif',e.target.value)} style={{ border:'1px solid var(--border2)', borderRadius:999, padding:'4px 10px', fontSize:12, outline:'none', background:'rgba(255,255,255,0.85)' }}>
                 <option value="evet">Var</option>
                 <option value="hayir">Yok</option>
               </select>
-              <select value={son.bdDiam} onChange={e => updSon(i,'bdDiam',e.target.value)} style={{ border:'1px solid var(--border2)', borderRadius:5, padding:'4px 8px', fontSize:12, outline:'none', background:'var(--white)' }}>
+              <select value={son.bdDiam} onChange={e => updSon(i,'bdDiam',e.target.value)} style={{ border:'1px solid var(--border2)', borderRadius:999, padding:'4px 10px', fontSize:12, outline:'none', background:'rgba(255,255,255,0.85)' }}>
                 <option value="34">¾" (DN20)</option>
                 <option value="1">1" (DN25)</option>
                 <option value="114">1¼" (DN32)</option>
               </select>
               <span style={{ fontSize:11, color:'var(--muted)' }}>BD bitiş katı:</span>
-              <input type="number" value={son.bdTo} min="1" style={{ width:60, border:'1px solid var(--border2)', borderRadius:5, padding:'4px 8px', fontSize:13, fontFamily:'var(--mono)', fontWeight:700, outline:'none', textAlign:'center' }}
+              <input type="number" value={son.bdTo} min="1" style={{ width:60, border:'1px solid var(--border2)', borderRadius:999, padding:'4px 8px', fontSize:13, fontFamily:'var(--mono)', fontWeight:700, outline:'none', textAlign:'center', background:'rgba(255,255,255,0.85)' }}
                 onChange={e => updSon(i,'bdTo',parseInt(e.target.value))} />
             </div>
             <div style={{ marginTop:8, fontSize:11, color:'var(--muted)', fontFamily:'var(--mono)' }}>
