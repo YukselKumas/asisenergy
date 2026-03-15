@@ -39,13 +39,28 @@ export function Step6Results({ goStep }) {
   async function handleSave() {
     if (!saveName.trim()) { showToast('Proje adı boş olamaz'); return; }
     setSaving(true);
+
+    // Supabase isteği yanıt vermezse 12 sn sonra timeout
+    const withTimeout = (promise, ms) => Promise.race([
+      promise,
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Bağlantı zaman aşımına uğradı. Supabase bağlantısını kontrol edin.')), ms)
+      ),
+    ]);
+
     try {
-      const id = await saveProject(user.id, saveName.trim());
-      if (result) await saveHistory(user.id, result);
-      showToast('Proje kaydedildi ✓');
+      await withTimeout(saveProject(user.id, saveName.trim()), 12000);
+      // Geçmiş kaydı ikincil — başarısız olsa bile ana kaydı göster
+      try {
+        if (result) await withTimeout(saveHistory(user.id, result), 8000);
+      } catch (histErr) {
+        console.warn('Geçmiş kaydı başarısız (ana kayıt tamamlandı):', histErr);
+      }
+      showToast('Proje kaydedildi');
       setShowSave(false);
     } catch (err) {
-      showToast('Kayıt hatası: ' + err.message);
+      console.error('Kayıt hatası:', err);
+      showToast('Kayıt hatası: ' + (err.message || 'Bilinmeyen hata'));
     } finally {
       setSaving(false);
     }

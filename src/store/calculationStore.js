@@ -224,15 +224,18 @@ export const useCalculationStore = create((set, get) => ({
 
     let id = projectId;
 
-    if (id) {
-      // Güncelle
-      const { error } = await supabase.from('projects').update(payload).eq('id', id);
-      if (error) { set({ isSaving: false }); throw error; }
-    } else {
-      // Yeni kayıt
-      const { data, error } = await supabase.from('projects').insert(payload).select().single();
-      if (error) { set({ isSaving: false }); throw error; }
-      id = data.id;
+    try {
+      if (id) {
+        const { error } = await supabase.from('projects').update(payload).eq('id', id);
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase.from('projects').insert(payload).select().single();
+        if (error) throw error;
+        id = data.id;
+      }
+    } catch (err) {
+      set({ isSaving: false });
+      throw err;
     }
 
     set({ projectId: id, projectName: payload.name, isDirty: false, isSaving: false });
