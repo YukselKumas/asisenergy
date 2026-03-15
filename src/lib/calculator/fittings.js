@@ -66,9 +66,10 @@ export function applyFittingsToQty(QTY, teeTotal, iteeTotal, redTotal, couTotal)
     QTY[id] = (QTY[id] || 0) + Math.ceil(iteeTotal * r);
   });
 
-  // Redüksiyon dağılımı
+  // Redüksiyon dağılımı (toplam: 3×0.20 + 4×0.10 = 1.00)
+  const redRatios = [0.20, 0.20, 0.20, 0.10, 0.10, 0.10, 0.10];
   ['r7563','r7550','r7540','r6350','r5040','r4032','r3225'].forEach((id, i) => {
-    QTY[id] = (QTY[id] || 0) + Math.ceil(redTotal * (i < 3 ? 0.20 : 0.13));
+    QTY[id] = (QTY[id] || 0) + Math.ceil(redTotal * redRatios[i]);
   });
 
   // Manşon dağılımı
