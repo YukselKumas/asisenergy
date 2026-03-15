@@ -4,7 +4,7 @@ import { Sidebar } from './Sidebar.jsx';
 
 export function Layout() {
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: 'transparent' }}>
       <Sidebar />
       <main style={{
         marginLeft: 'var(--sidebar-w)',
