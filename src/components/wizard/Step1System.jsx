@@ -153,21 +153,21 @@ export function Step1System({ goStep }) {
             <input type="number" value={c.depoHacim} min="0" step="0.5" onChange={e => updN('depoHacim', e.target.value)} />
           </Field>
           <Field label="Depo Malzemesi">
-            <select value={c.depoMat} onChange={e => upd('depoMat', e.target.value)}>
+            <GlassSelect value={c.depoMat} onChange={e => upd('depoMat', e.target.value)}>
               <option value="polietilen">Polietilen (PE)</option>
               <option value="celik">Çelik</option>
               <option value="paslanmaz">Paslanmaz Çelik</option>
               <option value="beton">Beton</option>
-            </select>
+            </GlassSelect>
           </Field>
           <Field label="Bağlantı Çapı (emiş)" hint="Hidrofor emiş hattı çapı">
-            <select value={c.depoDiam} onChange={e => upd('depoDiam', e.target.value)}>
+            <GlassSelect value={c.depoDiam} onChange={e => upd('depoDiam', e.target.value)}>
               <option value="q50">Q50 — 1½"</option>
               <option value="q63">Q63 — 2"</option>
               <option value="q75">Q75 — 2½"</option>
               <option value="q90">Q90 — 3"</option>
               <option value="q110">Q110 — 4"</option>
-            </select>
+            </GlassSelect>
           </Field>
         </div>
       </Card>
@@ -180,7 +180,7 @@ export function Step1System({ goStep }) {
             <input type="number" value={c.hidroforAdet} min="0" onChange={e => updN('hidroforAdet', e.target.value)} />
           </Field>
           <Field label="Pompa Çıkış Çapı">
-            <select value={c.hidroforDiam} onChange={e => upd('hidroforDiam', e.target.value)}>
+            <GlassSelect value={c.hidroforDiam} onChange={e => upd('hidroforDiam', e.target.value)}>
               <option value="q25">Q25 — ¾"</option>
               <option value="q32">Q32 — 1"</option>
               <option value="q40">Q40 — 1¼"</option>
@@ -189,33 +189,33 @@ export function Step1System({ goStep }) {
               <option value="q75">Q75 — 2½"</option>
               <option value="q90">Q90 — 3"</option>
               <option value="q110">Q110 — 4"</option>
-            </select>
+            </GlassSelect>
           </Field>
           <Field label="Pompa Çıkış Vanası" hint="Her pompa başına 2 adet">
-            <select value={c.hidroforVana} onChange={e => upd('hidroforVana', e.target.value)}>
+            <GlassSelect value={c.hidroforVana} onChange={e => upd('hidroforVana', e.target.value)}>
               <option value="pirince">Pirinç Küresel Vana</option>
               <option value="ppr">PPR Küresel Vana</option>
-            </select>
+            </GlassSelect>
           </Field>
           <Field label="Pompa Başı Çekvalf">
-            <select value={c.hidroforCv} onChange={e => upd('hidroforCv', e.target.value)}>
+            <GlassSelect value={c.hidroforCv} onChange={e => upd('hidroforCv', e.target.value)}>
               <option value="evet">Var — 1 adet / pompa</option>
               <option value="hayir">Yok</option>
-            </select>
+            </GlassSelect>
           </Field>
           <Field label="Union / Oynar Rakor">
-            <select value={c.hidroforUnion} onChange={e => upd('hidroforUnion', e.target.value)}>
+            <GlassSelect value={c.hidroforUnion} onChange={e => upd('hidroforUnion', e.target.value)}>
               <option value="evet">Var — 2 adet / pompa</option>
               <option value="hayir">Yok</option>
-            </select>
+            </GlassSelect>
           </Field>
           <Field label="Union Çapı">
-            <select value={c.hidroforUnionDiam} onChange={e => upd('hidroforUnionDiam', e.target.value)}>
+            <GlassSelect value={c.hidroforUnionDiam} onChange={e => upd('hidroforUnionDiam', e.target.value)}>
               <option value="q32">Q32 — 1"</option>
               <option value="q40">Q40 — 1¼"</option>
               <option value="q50">Q50 — 1½"</option>
               <option value="q63">Q63 — 2"</option>
-            </select>
+            </GlassSelect>
           </Field>
           <Field label="Manometre (hidrofor)">
             <input type="number" value={c.hidroforMano} min="0" onChange={e => updN('hidroforMano', e.target.value)} />
@@ -224,31 +224,31 @@ export function Step1System({ goStep }) {
         <div className="slbl">⬇ Pompa Emiş Hattı (Depo → Pompa)</div>
         <div className="g g4">
           <Field label="Emiş Hattı Çapı" hint="Pompa başına 1 emiş hattı">
-            <select value={c.emisDiam} onChange={e => upd('emisDiam', e.target.value)}>
+            <GlassSelect value={c.emisDiam} onChange={e => upd('emisDiam', e.target.value)}>
               <option value="q50">Q50 — 1½"</option>
               <option value="q63">Q63 — 2"</option>
               <option value="q75">Q75 — 2½"</option>
               <option value="q90">Q90 — 3"</option>
               <option value="q110">Q110 — 4"</option>
-            </select>
+            </GlassSelect>
           </Field>
           <Field label="Emiş Hattı Pirinç Vana">
-            <select value={c.emisVana} onChange={e => upd('emisVana', e.target.value)}>
+            <GlassSelect value={c.emisVana} onChange={e => upd('emisVana', e.target.value)}>
               <option value="evet">Var — 1 adet / pompa</option>
               <option value="hayir">Yok</option>
-            </select>
+            </GlassSelect>
           </Field>
           <Field label="Emiş Hattı Filtre">
-            <select value={c.emisFilt} onChange={e => upd('emisFilt', e.target.value)}>
+            <GlassSelect value={c.emisFilt} onChange={e => upd('emisFilt', e.target.value)}>
               <option value="evet">Var — 1 adet / pompa</option>
               <option value="hayir">Yok</option>
-            </select>
+            </GlassSelect>
           </Field>
           <Field label="Vana–Filtre Arası Nipel">
-            <select value={c.emisNip} onChange={e => upd('emisNip', e.target.value)}>
+            <GlassSelect value={c.emisNip} onChange={e => upd('emisNip', e.target.value)}>
               <option value="evet">Var — 1 adet / pompa</option>
               <option value="hayir">Yok</option>
-            </select>
+            </GlassSelect>
           </Field>
         </div>
       </Card>
@@ -261,7 +261,7 @@ export function Step1System({ goStep }) {
               <input type="number" value={c.boylerAdet} min="0" onChange={e => updN('boylerAdet', e.target.value)} />
             </Field>
             <Field label="Boyler Bağlantı Çapı">
-              <select value={c.boylerDiam} onChange={e => upd('boylerDiam', e.target.value)}>
+              <GlassSelect value={c.boylerDiam} onChange={e => upd('boylerDiam', e.target.value)}>
                 <option value="q32">Q32 — 1"</option>
                 <option value="q40">Q40 — 1¼"</option>
                 <option value="q50">Q50 — 1½"</option>
@@ -269,13 +269,13 @@ export function Step1System({ goStep }) {
                 <option value="q75">Q75 — 2½"</option>
                 <option value="q90">Q90 — 3"</option>
                 <option value="q110">Q110 — 4"</option>
-              </select>
+              </GlassSelect>
             </Field>
             <Field label="Boyler Çıkış Vanası">
-              <select value={c.boylerVana} onChange={e => upd('boylerVana', e.target.value)}>
+              <GlassSelect value={c.boylerVana} onChange={e => upd('boylerVana', e.target.value)}>
                 <option value="pirince">Pirinç Küresel Vana</option>
                 <option value="ppr">PPR Küresel Vana</option>
-              </select>
+              </GlassSelect>
             </Field>
             <Field label="Genleşme Tankı Adedi">
               <input type="number" value={c.tankAdet} min="0" onChange={e => updN('tankAdet', e.target.value)} />
@@ -299,7 +299,7 @@ export function Step1System({ goStep }) {
             <input type="number" value={c.mainf} min="0" onChange={e => updN('mainf', e.target.value)} />
           </Field>
           <Field label="Ana Hat Filtre Çapı">
-            <select value={c.mainfDiam} onChange={e => upd('mainfDiam', e.target.value)}>
+            <GlassSelect value={c.mainfDiam} onChange={e => upd('mainfDiam', e.target.value)}>
               <option value="f34">¾" (DN20)</option>
               <option value="f1">1" (DN25)</option>
               <option value="f114">1¼" (DN32)</option>
@@ -308,7 +308,7 @@ export function Step1System({ goStep }) {
               <option value="f212">2½" (DN65)</option>
               <option value="f3">3" (DN80)</option>
               <option value="f4">4" (DN100)</option>
-            </select>
+            </GlassSelect>
           </Field>
         </div>
       </Card>
