@@ -103,7 +103,7 @@ export function KollectorCard({ hatId }) {
             <input
               type="number" value={kol.rows.length} min="1" max="30"
               onChange={e => changeRowCount(parseInt(e.target.value))}
-              style={{ background:'var(--white)', border:'1px solid var(--border2)', borderRadius:5, padding:'6px 8px', fontSize:14, fontFamily:'var(--mono)', fontWeight:700, outline:'none', width:70, textAlign:'center' }}
+              style={{ background:'rgba(255,255,255,0.85)', border:'1px solid var(--border2)', borderRadius:999, padding:'6px 8px', fontSize:14, fontFamily:'var(--mono)', fontWeight:700, outline:'none', width:70, textAlign:'center' }}
             />
             <span style={{ fontSize:11, color:'var(--muted)' }}>çıkış</span>
           </div>
@@ -114,7 +114,7 @@ export function KollectorCard({ hatId }) {
             <select
               id={`bulk-vd-${hatId}`}
               defaultValue="q75"
-              style={{ background:'var(--white)', border:'1px solid var(--border2)', borderRadius:5, padding:'6px 8px', fontSize:12, fontFamily:'var(--mono)', outline:'none', flex:1 }}
+              style={{ background:'rgba(255,255,255,0.85)', border:'1px solid var(--border2)', borderRadius:999, padding:'6px 12px', fontSize:12, fontFamily:'var(--mono)', outline:'none', flex:1 }}
             >
               {PIRINCT_OPTS.map(d => <option key={d} value={d}>{DIAM_LABEL[d]}</option>)}
             </select>
@@ -123,7 +123,7 @@ export function KollectorCard({ hatId }) {
                 const sel = document.getElementById(`bulk-vd-${hatId}`);
                 if (sel) bulkApply(sel.value);
               }}
-              style={{ background:'var(--acc)', color:'#fff', border:'none', borderRadius:5, padding:'6px 10px', fontSize:11, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}
+              style={{ background:'var(--acc)', color:'#fff', border:'none', borderRadius:999, padding:'6px 12px', fontSize:11, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}
             >
               Tümüne
             </button>
@@ -162,7 +162,7 @@ export function KollectorCard({ hatId }) {
                     <select
                       value={row.vd}
                       onChange={e => updRow(i, 'vd', e.target.value)}
-                      style={{ background:'var(--white)', border:'1px solid var(--border2)', borderRadius:5, padding:'5px 7px', fontSize:12, fontFamily:'var(--mono)', outline:'none', width:130 }}
+                      style={{ background:'rgba(255,255,255,0.85)', border:'1px solid var(--border2)', borderRadius:999, padding:'5px 10px', fontSize:12, fontFamily:'var(--mono)', outline:'none', width:130 }}
                     >
                       {PIRINCT_OPTS.map(d => <option key={d} value={d}>{DIAM_LABEL[d]}</option>)}
                     </select>

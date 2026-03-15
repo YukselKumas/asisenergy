@@ -115,11 +115,11 @@ export function HistoryPage() {
                     <td>
                       <div style={{ display:'flex', gap:6 }}>
                         <button onClick={() => openProject(p)}
-                          style={{ background:'var(--acc)', color:'#fff', border:'none', borderRadius:5, padding:'4px 10px', fontSize:11, cursor:'pointer', fontWeight:700 }}>
+                          style={{ background:'var(--acc)', color:'#fff', border:'none', borderRadius:999, padding:'4px 10px', fontSize:11, cursor:'pointer', fontWeight:700 }}>
                           Aç
                         </button>
                         <button onClick={() => deleteProject(p.id)}
-                          style={{ background:'var(--bg)', color:'var(--red)', border:'1px solid var(--border)', borderRadius:5, padding:'4px 10px', fontSize:11, cursor:'pointer' }}>
+                          style={{ background:'var(--bg)', color:'var(--red)', border:'1px solid var(--border)', borderRadius:999, padding:'4px 10px', fontSize:11, cursor:'pointer' }}>
                           Sil
                         </button>
                       </div>

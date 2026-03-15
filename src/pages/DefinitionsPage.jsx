@@ -301,7 +301,7 @@ function BrandsTab() {
                 <td style={{ color:'var(--muted)', fontSize:11 }}>{BRAND_CAT_OPT.find(o=>o.value===b.category)?.label || b.category}</td>
                 <td style={{ color:'var(--muted)', fontSize:12 }}>{b.description || '—'}</td>
                 <td>
-                  <button onClick={() => handleDelete(b.id)} style={{ background:'transparent', border:'1px solid var(--border)', color:'var(--red)', borderRadius:5, padding:'3px 9px', fontSize:11, cursor:'pointer' }}>
+                  <button onClick={() => handleDelete(b.id)} style={{ background:'transparent', border:'1px solid var(--border)', color:'var(--red)', borderRadius:999, padding:'3px 9px', fontSize:11, cursor:'pointer' }}>
                     Sil
                   </button>
                 </td>
