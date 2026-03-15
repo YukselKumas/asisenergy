@@ -61,7 +61,7 @@ export function KollectorCard({ hatId }) {
     <div style={{
       marginBottom:22, padding:16,
       background:'var(--bg)', border:'1px solid var(--border)',
-      borderLeft:`3px solid ${hat.accent}`, borderRadius:'var(--r2)',
+      borderLeft:`3px solid ${hat.accent}`, borderRadius:'var(--r)',
     }}>
       <div style={{ fontSize:11, fontWeight:800, letterSpacing:'.5px', textTransform:'uppercase', color:hat.accent, marginBottom:14 }}>
         {hat.label}

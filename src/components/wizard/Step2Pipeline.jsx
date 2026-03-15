@@ -169,7 +169,7 @@ export function Step2Pipeline({ goStep }) {
           <div key={i} style={{
             marginBottom:12, padding:14,
             background:'var(--bg)', border:'1px solid var(--border)',
-            borderLeft:`3px solid ${SON_ACCENTS[i]}`, borderRadius:'var(--r2)',
+            borderLeft:`3px solid ${SON_ACCENTS[i]}`, borderRadius:'var(--r)',
           }}>
             <div style={{ fontSize:11, fontWeight:800, letterSpacing:'.5px', textTransform:'uppercase', color:SON_ACCENTS[i], marginBottom:12 }}>
               {i+1}. Son
