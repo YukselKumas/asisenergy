@@ -3,16 +3,16 @@
    ──────────────────────────────────────────────────────────────────────── */
 :root {
   /* Arkaplanlar */
-  --bg:    #eef2f8;
-  --bg2:   #e4e8ef;
+  --bg:    #e8eef8;
+  --bg2:   #dce4f0;
   --white: #ffffff;
 
   /* Glass bileşenleri */
-  --glass-bg:     rgba(255,255,255,0.72);
-  --glass-bg2:    rgba(255,255,255,0.52);
-  --glass-border: rgba(255,255,255,0.60);
-  --glass-blur:   blur(24px) saturate(180%);
-  --glass-blur-sm: blur(12px) saturate(150%);
+  --glass-bg:     rgba(255,255,255,0.65);
+  --glass-bg2:    rgba(255,255,255,0.45);
+  --glass-border: rgba(255,255,255,0.70);
+  --glass-blur:   blur(28px) saturate(200%);
+  --glass-blur-sm: blur(16px) saturate(160%);
 
   /* Kenarlıklar */
   --border:  rgba(209,213,219,0.8);
