@@ -45,15 +45,25 @@ export function GlassSelect({ value, onChange, children, style, disabled }) {
     return () => document.removeEventListener('keydown', h);
   }, [open]);
 
-  // Scroll / resize'da kapat
+  // Scroll / resize'da pozisyonu güncelle (kapatma)
   useEffect(() => {
     if (!open) return;
-    const h = () => setOpen(false);
-    window.addEventListener('scroll', h, true);
-    window.addEventListener('resize', h);
+    const reposition = () => {
+      if (btnRef.current) {
+        const r = btnRef.current.getBoundingClientRect();
+        setPos({
+          top:   r.bottom + window.scrollY + 5,
+          left:  r.left   + window.scrollX,
+          width: r.width,
+        });
+      }
+    };
+    const onResize = () => setOpen(false); // resize'da kapat (konum değişebilir)
+    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', onResize);
     return () => {
-      window.removeEventListener('scroll', h, true);
-      window.removeEventListener('resize', h);
+      window.removeEventListener('scroll', reposition, true);
+      window.removeEventListener('resize', onResize);
     };
   }, [open]);
 
