@@ -1,7 +1,9 @@
 // ── KollectorCard — Tek hat kolektör yapılandırma kartı ───────────────
 // Her çıkış için bağımsız çap, çekvalf ve nipel/rakor seçimi.
 
+import { useState } from 'react';
 import { useCalculationStore } from '../../store/calculationStore.js';
+import { GlassSelect } from '../ui/GlassSelect.jsx';
 import { DIAM_LABEL, DIAM_ORDER } from '../../lib/calculator/constants.js';
 import { iteId, pirVanaId, cvId as cvIdFn, nipIdForDiam, saatrekId } from '../../lib/calculator/kollector.js';
 import { showToast } from '../ui/Toast.jsx';
@@ -17,12 +19,11 @@ const HAT_CONFIG = {
 export function KollectorCard({ hatId }) {
   const { config, setConfig } = useCalculationStore();
   const hat = HAT_CONFIG[hatId];
+  const [bulkVd, setBulkVd] = useState('q75');
 
-  // Kolektör state'i config.kolektors dizisinden alınır
   const kols = config.kolektors || [];
   const kolIdx = kols.findIndex(k => k.hatId === hatId);
 
-  // Varsayılan kolektör nesnesi
   const defaultKol = {
     hatId,
     mat:    'ppr',
@@ -52,8 +53,8 @@ export function KollectorCard({ hatId }) {
     updKol({ rows: next });
   }
 
-  function bulkApply(vd) {
-    updKol({ rows: kol.rows.map(r => ({ ...r, vd })) });
+  function bulkApply() {
+    updKol({ rows: kol.rows.map(r => ({ ...r, vd: bulkVd })) });
     showToast('Tüm çıkışlara uygulandı');
   }
 
@@ -78,24 +79,24 @@ export function KollectorCard({ hatId }) {
       <div className="g g4" style={{ marginBottom:14 }}>
         <div className="field">
           <label>Kolektör Malzemesi</label>
-          <select value={kol.mat} onChange={e => updKol({ mat: e.target.value })}>
+          <GlassSelect value={kol.mat} onChange={e => updKol({ mat: e.target.value })}>
             <option value="ppr">PPR Kolektör</option>
             <option value="paslanmaz">Paslanmaz Çelik Kolektör</option>
-          </select>
+          </GlassSelect>
         </div>
         <div className="field">
           <label>Kolektör Ana Çapı</label>
-          <select value={kol.kdiam} onChange={e => updKol({ kdiam: e.target.value })}>
+          <GlassSelect value={kol.kdiam} onChange={e => updKol({ kdiam: e.target.value })}>
             {KOLDIAM_LIST.map(d => <option key={d} value={d}>{DIAM_LABEL[d] || d}</option>)}
-          </select>
+          </GlassSelect>
         </div>
         <div className="field">
           <label>Kapama Başlığı (Kep)</label>
-          <select value={kol.kepAdet} onChange={e => updKol({ kepAdet: parseInt(e.target.value) })}>
+          <GlassSelect value={kol.kepAdet} onChange={e => updKol({ kepAdet: parseInt(e.target.value) })}>
             <option value={2}>Her iki uçta (2 adet)</option>
             <option value={1}>Sadece bir uçta (1 adet)</option>
             <option value={0}>Kep yok</option>
-          </select>
+          </GlassSelect>
         </div>
         <div className="field">
           <label>Çıkış Adedi</label>
@@ -111,18 +112,11 @@ export function KollectorCard({ hatId }) {
         <div className="field">
           <label>Toplu: Çıkış Çapı</label>
           <div style={{ display:'flex', gap:6, marginTop:5 }}>
-            <select
-              id={`bulk-vd-${hatId}`}
-              defaultValue="q75"
-              style={{ background:'rgba(255,255,255,0.85)', border:'1px solid var(--border2)', borderRadius:999, padding:'6px 12px', fontSize:12, fontFamily:'var(--mono)', outline:'none', flex:1 }}
-            >
+            <GlassSelect value={bulkVd} onChange={e => setBulkVd(e.target.value)} style={{ flex:1 }}>
               {PIRINCT_OPTS.map(d => <option key={d} value={d}>{DIAM_LABEL[d]}</option>)}
-            </select>
+            </GlassSelect>
             <button
-              onClick={() => {
-                const sel = document.getElementById(`bulk-vd-${hatId}`);
-                if (sel) bulkApply(sel.value);
-              }}
+              onClick={bulkApply}
               style={{ background:'var(--acc)', color:'#fff', border:'none', borderRadius:999, padding:'6px 12px', fontSize:11, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap' }}
             >
               Tümüne
@@ -132,7 +126,7 @@ export function KollectorCard({ hatId }) {
       </div>
 
       {/* Çıkış satırları tablosu */}
-      <div style={{ overflowX:'auto', border:'1px solid var(--border)', borderRadius:'var(--r2)' }}>
+      <div style={{ overflowX:'auto', border:'1px solid var(--border)', borderRadius:'var(--r)' }}>
         <table style={{ width:'100%', borderCollapse:'collapse', minWidth:680 }}>
           <thead>
             <tr style={{ background:'var(--bg)' }}>
@@ -159,13 +153,13 @@ export function KollectorCard({ hatId }) {
                 <tr key={i} style={{ borderBottom:'1px solid var(--border)' }}>
                   <td style={{ padding:'8px 10px', fontFamily:'var(--mono)', fontWeight:700, color:'var(--acc)', fontSize:12 }}>Çıkış {i+1}</td>
                   <td style={{ padding:'6px 10px' }}>
-                    <select
+                    <GlassSelect
                       value={row.vd}
                       onChange={e => updRow(i, 'vd', e.target.value)}
-                      style={{ background:'rgba(255,255,255,0.85)', border:'1px solid var(--border2)', borderRadius:999, padding:'5px 10px', fontSize:12, fontFamily:'var(--mono)', outline:'none', width:130 }}
+                      style={{ minWidth: 130 }}
                     >
                       {PIRINCT_OPTS.map(d => <option key={d} value={d}>{DIAM_LABEL[d]}</option>)}
-                    </select>
+                    </GlassSelect>
                   </td>
                   <td style={{ padding:'6px 10px', fontSize:11, color:'var(--muted)', fontFamily:'var(--mono)', whiteSpace:'nowrap' }}>
                     {k}×{c}×{k} İTe

@@ -2,9 +2,10 @@
 // Yatay ana hat, dikey kolon (çok sonlu şaft), branşman ve şaft başı vanalar.
 
 import { useCalculationStore } from '../../store/calculationStore.js';
-import { Card }   from '../ui/Card.jsx';
-import { Field }  from '../ui/Field.jsx';
-import { Button } from '../ui/Button.jsx';
+import { Card }         from '../ui/Card.jsx';
+import { Field }        from '../ui/Field.jsx';
+import { Button }       from '../ui/Button.jsx';
+import { GlassSelect }  from '../ui/GlassSelect.jsx';
 import { KollectorCard } from '../kollector/KollectorCard.jsx';
 import { DIAM_LABEL, DIAM_ORDER } from '../../lib/calculator/constants.js';
 import { calcVertSegments } from '../../lib/calculator/vertical.js';
@@ -27,7 +28,6 @@ export function Step2Pipeline({ goStep }) {
     const cur  = c.sons || [];
     const def  = { from:1, to:4, startDiam:'q63', minDiam:'q25', bdAktif:'evet', bdDiam:'34', bdTo:4 };
     const next = Array.from({ length: count }, (_, i) => cur[i] || { ...def, from: i*5+1, to: (i+1)*5 });
-    // 1 son (tek kolon) seçildiğinde bitiş katı = bina kat sayısı
     if (count === 1) {
       next[0] = { ...next[0], to: c.floor || next[0].to, bdTo: c.floor || next[0].bdTo };
     }
@@ -66,27 +66,27 @@ export function Step2Pipeline({ goStep }) {
             <div className="slbl" style={{ color:'var(--hot)' }}>🔴 Sıcak Su — Yatay Güzergah</div>
             <div className="g g5">
               <Field label="Başlangıç Çapı">
-                <select value={c.hyHotStart} onChange={e => upd('hyHotStart', e.target.value)}>
+                <GlassSelect value={c.hyHotStart} onChange={e => upd('hyHotStart', e.target.value)}>
                   {['q63','q75','q90','q110'].map(d=><option key={d} value={d}>{DIAM_LABEL[d]}</option>)}
-                </select>
+                </GlassSelect>
               </Field>
               <Field label="Uzunluk 1 (m)">
                 <input type="number" value={c.hyHotL1} min="0" step="0.1" onChange={e => updN('hyHotL1', e.target.value)} />
               </Field>
               <Field label="2. Çap">
-                <select value={c.hyHotD2} onChange={e => upd('hyHotD2', e.target.value)}>
+                <GlassSelect value={c.hyHotD2} onChange={e => upd('hyHotD2', e.target.value)}>
                   <option value="">— yok —</option>
                   {['q75','q63','q50','q40'].map(d=><option key={d} value={d}>{DIAM_LABEL[d]}</option>)}
-                </select>
+                </GlassSelect>
               </Field>
               <Field label="Uzunluk 2 (m)">
                 <input type="number" value={c.hyHotL2} min="0" step="0.1" onChange={e => updN('hyHotL2', e.target.value)} />
               </Field>
               <Field label="3. Çap">
-                <select value={c.hyHotD3} onChange={e => upd('hyHotD3', e.target.value)}>
+                <GlassSelect value={c.hyHotD3} onChange={e => upd('hyHotD3', e.target.value)}>
                   <option value="">— yok —</option>
                   {['q63','q50','q40','q32'].map(d=><option key={d} value={d}>{DIAM_LABEL[d]}</option>)}
-                </select>
+                </GlassSelect>
               </Field>
               <Field label="Uzunluk 3 (m)">
                 <input type="number" value={c.hyHotL3} min="0" step="0.1" onChange={e => updN('hyHotL3', e.target.value)} />
@@ -100,27 +100,27 @@ export function Step2Pipeline({ goStep }) {
             <div className="slbl" style={{ color:'var(--cold)', marginTop:18 }}>🔵 Soğuk Su — Yatay Güzergah</div>
             <div className="g g5">
               <Field label="Başlangıç Çapı">
-                <select value={c.hyColdStart} onChange={e => upd('hyColdStart', e.target.value)}>
+                <GlassSelect value={c.hyColdStart} onChange={e => upd('hyColdStart', e.target.value)}>
                   {['q63','q75','q90','q110'].map(d=><option key={d} value={d}>{DIAM_LABEL[d]}</option>)}
-                </select>
+                </GlassSelect>
               </Field>
               <Field label="Uzunluk 1 (m)">
                 <input type="number" value={c.hyColdL1} min="0" step="0.1" onChange={e => updN('hyColdL1', e.target.value)} />
               </Field>
               <Field label="2. Çap">
-                <select value={c.hyColdD2} onChange={e => upd('hyColdD2', e.target.value)}>
+                <GlassSelect value={c.hyColdD2} onChange={e => upd('hyColdD2', e.target.value)}>
                   <option value="">— yok —</option>
                   {['q75','q63','q50','q40'].map(d=><option key={d} value={d}>{DIAM_LABEL[d]}</option>)}
-                </select>
+                </GlassSelect>
               </Field>
               <Field label="Uzunluk 2 (m)">
                 <input type="number" value={c.hyColdL2} min="0" step="0.1" onChange={e => updN('hyColdL2', e.target.value)} />
               </Field>
               <Field label="3. Çap">
-                <select value={c.hyColdD3} onChange={e => upd('hyColdD3', e.target.value)}>
+                <GlassSelect value={c.hyColdD3} onChange={e => upd('hyColdD3', e.target.value)}>
                   <option value="">— yok —</option>
                   {['q63','q50','q40','q32'].map(d=><option key={d} value={d}>{DIAM_LABEL[d]}</option>)}
-                </select>
+                </GlassSelect>
               </Field>
               <Field label="Uzunluk 3 (m)">
                 <input type="number" value={c.hyColdL3} min="0" step="0.1" onChange={e => updN('hyColdL3', e.target.value)} />
@@ -134,9 +134,9 @@ export function Step2Pipeline({ goStep }) {
             <div className="slbl" style={{ color:'var(--circ)', marginTop:18 }}>🟣 Sirkülasyon — Yatay</div>
             <div className="g g3">
               <Field label="Sirkülasyon Çapı (sabit)" hint="Tüm güzergahta aynı çap">
-                <select value={c.circDiam} onChange={e => upd('circDiam', e.target.value)}>
+                <GlassSelect value={c.circDiam} onChange={e => upd('circDiam', e.target.value)}>
                   {['q20','q25','q32','q40','q50','q63'].map(d=><option key={d} value={d}>{DIAM_LABEL[d]}</option>)}
-                </select>
+                </GlassSelect>
               </Field>
               <Field label="Yatay Uzunluk (m)">
                 <input type="number" value={c.circYatay} min="0" step="0.1" onChange={e => updN('circYatay', e.target.value)} />
@@ -150,18 +150,18 @@ export function Step2Pipeline({ goStep }) {
       <Card accent="acc" title="Dikey Kolon — Çok Sonlu Şaft Sistemi" badge="B">
         <div className="g g3" style={{ marginBottom:16 }}>
           <Field label="Son Adedi (şaft başına)">
-            <select value={c.vertSonCount} onChange={e => changeSonCount(parseInt(e.target.value))}>
+            <GlassSelect value={c.vertSonCount} onChange={e => changeSonCount(parseInt(e.target.value))}>
               <option value={1}>1 Son (tek kolon)</option>
               <option value={2}>2 Son</option>
               <option value={3}>3 Son</option>
-            </select>
+            </GlassSelect>
           </Field>
           <Field label="Kaç Katta Bir Çap Küçülür?">
-            <select value={c.vertStep} onChange={e => updN('vertStep', e.target.value)}>
+            <GlassSelect value={c.vertStep} onChange={e => updN('vertStep', e.target.value)}>
               <option value={3}>Her 3 katta bir</option>
               <option value={4}>Her 4 katta bir</option>
               <option value={5}>Her 5 katta bir</option>
-            </select>
+            </GlassSelect>
           </Field>
         </div>
 
@@ -184,28 +184,28 @@ export function Step2Pipeline({ goStep }) {
                   onChange={e => updSon(i, 'to', parseInt(e.target.value))} />
               </Field>
               <Field label="Başlangıç Çapı">
-                <select value={son.startDiam} onChange={e => updSon(i, 'startDiam', e.target.value)}>
+                <GlassSelect value={son.startDiam} onChange={e => updSon(i, 'startDiam', e.target.value)}>
                   {DIAM_OPTS_VERT.map(d=><option key={d} value={d}>{DIAM_LABEL[d]}</option>)}
-                </select>
+                </GlassSelect>
               </Field>
               <Field label="Minimum Çap">
-                <select value={son.minDiam} onChange={e => updSon(i, 'minDiam', e.target.value)}>
+                <GlassSelect value={son.minDiam} onChange={e => updSon(i, 'minDiam', e.target.value)}>
                   {DIAM_OPTS_VERT.map(d=><option key={d} value={d}>{DIAM_LABEL[d]}</option>)}
-                </select>
+                </GlassSelect>
               </Field>
             </div>
             {/* BD satırı */}
-            <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', marginTop:10, padding:'8px 12px', background:'var(--white)', border:'1px solid var(--border2)', borderRadius:'var(--r2)' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', marginTop:10, padding:'8px 12px', background:'var(--white)', border:'1px solid var(--border2)', borderRadius:'var(--r3)' }}>
               <span style={{ fontSize:11, fontWeight:700, color:'var(--cold)', textTransform:'uppercase' }}>Basınç Düşürücü</span>
-              <select value={son.bdAktif} onChange={e => updSon(i,'bdAktif',e.target.value)} style={{ border:'1px solid var(--border2)', borderRadius:999, padding:'4px 10px', fontSize:12, outline:'none', background:'rgba(255,255,255,0.85)' }}>
+              <GlassSelect value={son.bdAktif} onChange={e => updSon(i,'bdAktif',e.target.value)} style={{ flex:'0 0 120px' }}>
                 <option value="evet">Var</option>
                 <option value="hayir">Yok</option>
-              </select>
-              <select value={son.bdDiam} onChange={e => updSon(i,'bdDiam',e.target.value)} style={{ border:'1px solid var(--border2)', borderRadius:999, padding:'4px 10px', fontSize:12, outline:'none', background:'rgba(255,255,255,0.85)' }}>
+              </GlassSelect>
+              <GlassSelect value={son.bdDiam} onChange={e => updSon(i,'bdDiam',e.target.value)} style={{ flex:'0 0 150px' }}>
                 <option value="34">¾" (DN20)</option>
                 <option value="1">1" (DN25)</option>
                 <option value="114">1¼" (DN32)</option>
-              </select>
+              </GlassSelect>
               <span style={{ fontSize:11, color:'var(--muted)' }}>BD bitiş katı:</span>
               <input type="number" value={son.bdTo} min="1" style={{ width:60, border:'1px solid var(--border2)', borderRadius:999, padding:'4px 8px', fontSize:13, fontFamily:'var(--mono)', fontWeight:700, outline:'none', textAlign:'center', background:'rgba(255,255,255,0.85)' }}
                 onChange={e => updSon(i,'bdTo',parseInt(e.target.value))} />
@@ -236,11 +236,11 @@ export function Step2Pipeline({ goStep }) {
         <div className="slbl" style={{ marginTop:0 }}>Boru</div>
         <div className="g g4" style={{ marginBottom:16 }}>
           <Field label="Branşman Boru Çapı">
-            <select value={c.brDiam} onChange={e => upd('brDiam', e.target.value)}>
+            <GlassSelect value={c.brDiam} onChange={e => upd('brDiam', e.target.value)}>
               <option value="q20">Q20 — ½"</option>
               <option value="q25">Q25 — ¾"</option>
               <option value="q32">Q32 — 1"</option>
-            </select>
+            </GlassSelect>
           </Field>
           {c.hasHot  && <Field label="Sıcak Branşman (m / daire)"><input type="number" value={c.brHot}  min="0" step="0.1" onChange={e => updN('brHot',  e.target.value)} /></Field>}
           {c.hasCold && <Field label="Soğuk Branşman (m / daire)"><input type="number" value={c.brCold} min="0" step="0.1" onChange={e => updN('brCold', e.target.value)} /></Field>}
@@ -265,21 +265,21 @@ export function Step2Pipeline({ goStep }) {
       <Card accent="acc" title="Şaft Başı Vanalar" badge="E">
         <div className="g g3">
           <Field label="Vana Malzemesi" hint="Her şaft girişinde 1 adet">
-            <select value={c.shaftVanaMat} onChange={e => upd('shaftVanaMat', e.target.value)}>
+            <GlassSelect value={c.shaftVanaMat} onChange={e => upd('shaftVanaMat', e.target.value)}>
               <option value="ppr">PPR Küresel Vana</option>
               <option value="pirince">Pirinç Küresel Vana</option>
-            </select>
+            </GlassSelect>
           </Field>
           <Field label="Hat Başı Vana Çapı">
-            <select value={c.shaftVanaDiam} onChange={e => upd('shaftVanaDiam', e.target.value)}>
+            <GlassSelect value={c.shaftVanaDiam} onChange={e => upd('shaftVanaDiam', e.target.value)}>
               {['q25','q32','q40','q50','q63','q75','q90'].map(d=><option key={d} value={d}>{DIAM_LABEL[d]}</option>)}
-            </select>
+            </GlassSelect>
           </Field>
           <Field label="Şaft Başı Vana Adedi / Hat" hint="Toplam = adet × şaft × hat">
             <input type="number" value={c.shaftVanaAdet} min="0" onChange={e => updN('shaftVanaAdet', e.target.value)} />
           </Field>
         </div>
-        <div style={{ marginTop:14, padding:'12px 14px', background:'var(--bg)', border:'1px solid var(--border)', borderRadius:'var(--r2)' }}>
+        <div style={{ marginTop:14, padding:'12px 14px', background:'var(--bg)', border:'1px solid var(--border)', borderRadius:'var(--r3)' }}>
           <label style={{ display:'flex', alignItems:'center', gap:10, cursor:'pointer', fontSize:13, fontWeight:600 }}>
             <input type="checkbox" checked={c.shaft4katCk} onChange={e => upd('shaft4katCk', e.target.checked)} style={{ width:17, height:17, cursor:'pointer' }} />
             Her 4 katta bir şaft PPR kesme vanası ekle
