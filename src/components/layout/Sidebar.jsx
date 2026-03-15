@@ -65,14 +65,17 @@ export function Sidebar() {
   return (
     <aside style={{
       width: 'var(--sidebar-w)', minHeight: '100vh',
-      background: '#fafafa',
+      background: 'rgba(250,250,252,0.82)',
+      backdropFilter: 'blur(24px) saturate(180%)',
+      WebkitBackdropFilter: 'blur(24px) saturate(180%)',
       display: 'flex', flexDirection: 'column',
       position: 'fixed', top: 0, left: 0, bottom: 0, zIndex: 100,
-      borderRight: '1px solid #e8e8ed',
+      borderRight: '1px solid rgba(255,255,255,0.55)',
+      boxShadow: '2px 0 16px rgba(0,0,0,0.06)',
     }}>
 
       {/* Logo */}
-      <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid #e8e8ed' }}>
+      <div style={{ padding: '20px 16px 16px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
             width: 30, height: 30, borderRadius: 8,
@@ -105,7 +108,7 @@ export function Sidebar() {
               textDecoration: 'none', fontSize: 13, fontWeight: 500,
               transition: 'all .12s',
               ...(isActive
-                ? { background: '#e8f2fd', color: '#0071e3' }
+                ? { background: 'rgba(0,113,227,0.10)', color: '#0071e3', boxShadow: '0 1px 4px rgba(0,113,227,0.12), inset 0 1px 0 rgba(255,255,255,0.7)' }
                 : { background: 'transparent', color: '#1d1d1f' }
               ),
             })}
@@ -142,7 +145,7 @@ export function Sidebar() {
       </nav>
 
       {/* Kullanıcı & Çıkış */}
-      <div style={{ padding: '10px 10px 14px', borderTop: '1px solid #e8e8ed' }}>
+      <div style={{ padding: '10px 10px 14px', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '8px 10px', marginBottom: 4 }}>
           <div style={{
             width: 28, height: 28, borderRadius: 8, flexShrink: 0,
@@ -165,14 +168,16 @@ export function Sidebar() {
         </div>
         <button onClick={() => signOut()} style={{
           display: 'flex', alignItems: 'center', gap: 7,
-          width: '100%', background: 'transparent',
-          border: '1px solid #e8e8ed',
-          color: '#6e6e73', borderRadius: 8, padding: '7px 10px',
+          width: '100%', background: 'rgba(255,255,255,0.5)',
+          border: '1px solid rgba(209,213,219,0.6)',
+          color: '#6e6e73', borderRadius: 999, padding: '7px 12px',
           fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
-          transition: 'all .12s',
+          transition: 'all .15s',
+          backdropFilter: 'blur(8px)',
+          WebkitBackdropFilter: 'blur(8px)',
         }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = '#ffd0cc'; e.currentTarget.style.color = '#ff3b30'; e.currentTarget.style.background = '#fff5f4'; }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = '#e8e8ed'; e.currentTarget.style.color = '#6e6e73'; e.currentTarget.style.background = 'transparent'; }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = 'rgba(255,59,48,0.30)'; e.currentTarget.style.color = '#ff3b30'; e.currentTarget.style.background = 'rgba(255,59,48,0.07)'; }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'rgba(209,213,219,0.60)'; e.currentTarget.style.color = '#6e6e73'; e.currentTarget.style.background = 'rgba(255,255,255,0.5)'; }}
         >
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
