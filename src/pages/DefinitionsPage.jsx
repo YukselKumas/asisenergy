@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { useDefinitionsStore } from '../store/definitionsStore.js';
-import { PRICES, CAT_LABEL } from '../lib/calculator/constants.js';
+import { PRICES, PRICES_FIRAT, CAT_LABEL } from '../lib/calculator/constants.js';
 import { Card }   from '../components/ui/Card.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Badge }  from '../components/ui/Badge.jsx';
@@ -13,6 +13,14 @@ const TR = (x, d=2) => new Intl.NumberFormat('tr-TR', { minimumFractionDigits:d,
 
 const TABS = ['Fiyat Listesi', 'Markalar', 'Sistem Ayarları'];
 const CAT_FILTER_OPTS = ['Tümü', 'Boru', 'Bağlantı', 'Vana', 'Mekanik Oda'];
+
+const BRAND_CAT_OPT = [
+  { value:'ppr',    label:'PPR Boru & Bağlantı' },
+  { value:'valve',  label:'Pirinç Küresel Vana' },
+  { value:'bd',     label:'Basınç Düşürücü' },
+  { value:'filter', label:'Filtre & Çekvalf' },
+  { value:'other',  label:'Diğer' },
+];
 
 export function DefinitionsPage() {
   const [tab, setTab] = useState(0);
@@ -48,11 +56,13 @@ export function DefinitionsPage() {
 
 // ── Fiyat Listesi Tab ─────────────────────────────────────────────────
 function PriceListTab() {
-  const { brands, priceLists, fetchBrands, fetchPriceList, upsertPrices, loading } = useDefinitionsStore();
+  const { brands, priceLists, fetchBrands, fetchPriceList, upsertPrices, seedBrandFromConstants, loading } = useDefinitionsStore();
   const [selBrand,   setSelBrand]  = useState('');
-  const [localPrices,setLocalP]    = useState({});   // {product_id: {list_price, discount_pct}}
+  const [selBrandCat, setSelBrandCat] = useState('');
+  const [localPrices,setLocalP]    = useState({});
   const [catFilter,  setCatFilter] = useState('Tümü');
   const [saving,     setSaving]    = useState(false);
+  const [seeding,    setSeeding]   = useState(false);
 
   useEffect(() => { fetchBrands(); }, []);
 
@@ -65,6 +75,12 @@ function PriceListTab() {
     priceLists.forEach(p => { map[p.product_id] = { list_price: p.list_price, discount_pct: p.discount_pct }; });
     setLocalP(map);
   }, [priceLists]);
+
+  function handleBrandSelect(brandId) {
+    setSelBrand(brandId);
+    const brand = brands.find(b => b.id === brandId);
+    setSelBrandCat(brand?.category || '');
+  }
 
   function upd(productId, field, val) {
     setLocalP(prev => ({
@@ -85,11 +101,37 @@ function PriceListTab() {
         discount_pct: localPrices[p.id]?.discount_pct ?? p.disc,
       }));
       await upsertPrices(selBrand, rows);
-      showToast('Fiyatlar kaydedildi ✓');
+      showToast('Fiyatlar kaydedildi');
     } catch (err) {
       showToast('Kayıt hatası: ' + err.message);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleSeedKalde() {
+    if (!selBrand) return;
+    setSeeding(true);
+    try {
+      await seedBrandFromConstants(selBrand, null);
+      showToast('Kalde varsayılan fiyatları yüklendi');
+    } catch (err) {
+      showToast('Hata: ' + err.message);
+    } finally {
+      setSeeding(false);
+    }
+  }
+
+  async function handleSeedFirat() {
+    if (!selBrand) return;
+    setSeeding(true);
+    try {
+      await seedBrandFromConstants(selBrand, PRICES_FIRAT);
+      showToast('Fırat Boru fiyatları yüklendi');
+    } catch (err) {
+      showToast('Hata: ' + err.message);
+    } finally {
+      setSeeding(false);
     }
   }
 
@@ -98,16 +140,26 @@ function PriceListTab() {
     catFilter === 'Tümü' || CAT_MAP[p.cat] === catFilter
   );
 
+  // Marka kategorisine göre grupla
+  const brandGroups = BRAND_CAT_OPT.map(cat => ({
+    ...cat,
+    brands: brands.filter(b => b.category === cat.value),
+  })).filter(g => g.brands.length > 0);
+
   return (
     <div>
       <Card accent="acc" title="Marka Fiyat Listesi">
         <div style={{ display:'flex', gap:12, marginBottom:16, flexWrap:'wrap', alignItems:'flex-end' }}>
-          <div className="field" style={{ minWidth:200 }}>
+          <div className="field" style={{ minWidth:240 }}>
             <label>Marka Seç</label>
-            <select value={selBrand} onChange={e => setSelBrand(e.target.value)} style={{ background:'var(--white)', border:'1px solid var(--border2)', borderRadius:'var(--r2)', padding:'8px 10px', fontSize:13, outline:'none', width:'100%' }}>
+            <select value={selBrand} onChange={e => handleBrandSelect(e.target.value)} style={{ background:'var(--white)', border:'1px solid var(--border2)', borderRadius:'var(--r2)', padding:'8px 10px', fontSize:13, outline:'none', width:'100%' }}>
               <option value="">— Marka seçin —</option>
-              {brands.filter(b => b.category === 'ppr').map(b => (
-                <option key={b.id} value={b.id}>{b.name}</option>
+              {brandGroups.map(g => (
+                <optgroup key={g.value} label={g.label}>
+                  {g.brands.map(b => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </div>
@@ -123,18 +175,32 @@ function PriceListTab() {
             ))}
           </div>
           <Button variant="primary" onClick={handleSave} disabled={!selBrand || saving} style={{ marginLeft:'auto' }}>
-            {saving ? 'Kaydediliyor...' : '💾 Kaydet'}
+            {saving ? 'Kaydediliyor...' : 'Kaydet'}
           </Button>
         </div>
+
+        {/* Hazır fiyat yükleme */}
+        {selBrand && (
+          <div style={{ display:'flex', gap:8, marginBottom:14 }}>
+            <Button variant="default" style={{ padding:'4px 12px', fontSize:11 }}
+              onClick={handleSeedKalde} disabled={seeding}>
+              Kalde Varsayılan Fiyatlarını Yükle
+            </Button>
+            <Button variant="default" style={{ padding:'4px 12px', fontSize:11 }}
+              onClick={handleSeedFirat} disabled={seeding}>
+              Fırat Boru Fiyatlarını Yükle
+            </Button>
+          </div>
+        )}
 
         <div className="rtw">
           <table style={{ minWidth:560 }}>
             <thead>
               <tr>
                 <th>Kategori</th><th>Ürün</th><th>Birim</th>
-                <th style={{ textAlign:'right' }}>Liste (₺)</th>
+                <th style={{ textAlign:'right' }}>Liste (TL)</th>
                 <th style={{ textAlign:'right' }}>İsk%</th>
-                <th style={{ textAlign:'right' }}>Net (₺)</th>
+                <th style={{ textAlign:'right' }}>Net (TL)</th>
               </tr>
             </thead>
             <tbody>
@@ -177,9 +243,8 @@ function PriceListTab() {
 
 // ── Markalar Tab ──────────────────────────────────────────────────────
 function BrandsTab() {
-  const { brands, fetchBrands, addBrand, updateBrand, deleteBrand } = useDefinitionsStore();
-  const [form,    setForm]    = useState({ name:'', category:'ppr', description:'' });
-  const [editing, setEditing] = useState(null);
+  const { brands, fetchBrands, addBrand, deleteBrand } = useDefinitionsStore();
+  const [form, setForm] = useState({ name:'', category:'ppr', description:'' });
 
   useEffect(() => { fetchBrands(); }, []);
 
@@ -188,7 +253,7 @@ function BrandsTab() {
     try {
       await addBrand(form);
       setForm({ name:'', category:'ppr', description:'' });
-      showToast('Marka eklendi ✓');
+      showToast('Marka eklendi');
     } catch (err) { showToast(err.message); }
   }
 
@@ -198,17 +263,9 @@ function BrandsTab() {
     showToast('Marka silindi');
   }
 
-  const CAT_OPT = [
-    { value:'ppr',    label:'PPR Boru & Bağlantı' },
-    { value:'valve',  label:'Pirinç Küresel Vana' },
-    { value:'bd',     label:'Basınç Düşürücü' },
-    { value:'filter', label:'Filtre & Çekvalf' },
-    { value:'other',  label:'Diğer' },
-  ];
-
   return (
     <div>
-      <Card accent="green" title="Yeni Marka Ekle" badge="＋">
+      <Card accent="green" title="Yeni Marka Ekle" badge="+">
         <form onSubmit={handleAdd} style={{ display:'flex', gap:10, flexWrap:'wrap', alignItems:'flex-end' }}>
           <div className="field">
             <label>Marka Adı</label>
@@ -219,7 +276,7 @@ function BrandsTab() {
           <div className="field">
             <label>Kategori</label>
             <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
-              {CAT_OPT.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+              {BRAND_CAT_OPT.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>
           </div>
           <div className="field">
@@ -241,7 +298,7 @@ function BrandsTab() {
             {brands.map(b => (
               <tr key={b.id}>
                 <td style={{ fontWeight:700 }}>{b.name}</td>
-                <td style={{ color:'var(--muted)', fontSize:11 }}>{CAT_OPT.find(o=>o.value===b.category)?.label || b.category}</td>
+                <td style={{ color:'var(--muted)', fontSize:11 }}>{BRAND_CAT_OPT.find(o=>o.value===b.category)?.label || b.category}</td>
                 <td style={{ color:'var(--muted)', fontSize:12 }}>{b.description || '—'}</td>
                 <td>
                   <button onClick={() => handleDelete(b.id)} style={{ background:'transparent', border:'1px solid var(--border)', color:'var(--red)', borderRadius:5, padding:'3px 9px', fontSize:11, cursor:'pointer' }}>
@@ -272,19 +329,19 @@ function SystemConfigTab() {
 
   const CONFIGS = [
     { key:'kdv_rate',         label:'KDV Oranı (%)',            type:'number', hint:'Hesaplamalarda kullanılan varsayılan KDV oranı' },
-    { key:'default_brand_ppr',label:'Varsayılan PPR Markası',   type:'text',   hint:'Kalde, firat vb.' },
+    { key:'default_brand_ppr',label:'Varsayılan PPR Markası',   type:'text',   hint:'Marka UUID veya isim' },
     { key:'app_name',         label:'Uygulama Adı',             type:'text',   hint:'Arayüzde görünen başlık' },
   ];
 
   async function handleSave(key) {
     try {
       await updateSystemConfig(key, vals[key]);
-      showToast(`${key} güncellendi ✓`);
+      showToast(`${key} güncellendi`);
     } catch (err) { showToast(err.message); }
   }
 
   return (
-    <Card accent="warn" title="Sistem Ayarları" badge="⚙">
+    <Card accent="warn" title="Sistem Ayarları" badge="S">
       <div style={{ maxWidth:480 }}>
         {CONFIGS.map(cfg => (
           <div key={cfg.key} style={{ marginBottom:16, display:'flex', alignItems:'flex-end', gap:10 }}>

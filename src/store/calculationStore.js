@@ -5,6 +5,8 @@
 
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase.js';
+import { PRICES, productBrandCat } from '../lib/calculator/constants.js';
+import { useDefinitionsStore } from './definitionsStore.js';
 
 /** Varsayılan form değerleri — yeni hesaplama başlatıldığında kullanılır */
 export const DEFAULT_CONFIG = {
@@ -12,10 +14,10 @@ export const DEFAULT_CONFIG = {
   hasHot:   true,
   hasCirc:  true,
   hasCold:  true,
-  markaPpr:     'kalde',
-  markaPirince: 'standart',
-  markaBd:      'caleffi',
-  markaFiltre:  'kalde',
+  markaPpr:     '',   // Brand UUID (Supabase)
+  markaPirince: '',   // Brand UUID
+  markaBd:      '',   // Brand UUID
+  markaFiltre:  '',   // Brand UUID
   floor:        10,
   flatcheck:    40,
   firstFloor:   1,
@@ -118,6 +120,69 @@ export const useCalculationStore = create((set, get) => ({
     config:  { ...state.config, ...partial },
     isDirty: true,
   })),
+
+  /**
+   * Belirli bir marka kategorisi için fiyatları DB'den yükle ve priceOverride'a yaz.
+   * Sadece o kategorideki ürünleri etkiler, diğer kategorilerin override'ları korunur.
+   */
+  loadBrandPrices: async (category, brandId) => {
+    const { fetchBrandPriceMap } = useDefinitionsStore.getState();
+    const { config } = get();
+    const newOv = { ...(config.priceOverride || {}) };
+
+    // Bu kategorideki mevcut override'ları temizle
+    PRICES.forEach(p => {
+      if (productBrandCat(p.id) === category) {
+        delete newOv[p.id];
+      }
+    });
+
+    // Yeni marka fiyatlarını yükle
+    if (brandId) {
+      const priceMap = await fetchBrandPriceMap(brandId);
+      for (const [productId, price] of Object.entries(priceMap)) {
+        if (productBrandCat(productId) === category) {
+          newOv[productId] = price;
+        }
+      }
+    }
+
+    set(state => ({
+      config: { ...state.config, priceOverride: newOv },
+      isDirty: true,
+    }));
+  },
+
+  /**
+   * Tüm seçili markaların fiyatlarını yeniden yükle.
+   */
+  reloadAllBrandPrices: async () => {
+    const { config } = get();
+    const { fetchBrandPriceMap } = useDefinitionsStore.getState();
+    const newOv = {};
+
+    const brandMap = {
+      ppr:    config.markaPpr,
+      valve:  config.markaPirince,
+      bd:     config.markaBd,
+      filter: config.markaFiltre,
+    };
+
+    for (const [cat, brandId] of Object.entries(brandMap)) {
+      if (!brandId) continue;
+      const priceMap = await fetchBrandPriceMap(brandId);
+      for (const [productId, price] of Object.entries(priceMap)) {
+        if (productBrandCat(productId) === cat) {
+          newOv[productId] = price;
+        }
+      }
+    }
+
+    set(state => ({
+      config: { ...state.config, priceOverride: newOv },
+      isDirty: true,
+    }));
+  },
 
   /** Sonucu kaydet */
   setResult: (result) => set({ result }),
