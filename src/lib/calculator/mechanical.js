@@ -84,10 +84,16 @@ export function applyBoylerToQty(QTY, cfg) {
   const bVanaMat = cfg.boylerVana || 'pirince';
   const bVid     = bVanaMat === 'ppr' ? pprVanaId(bDiam) : pirVanaId(bDiam);
 
-  QTY[bVid]   = (QTY[bVid]   || 0) + adet * 2;
-  QTY['f114'] = (QTY['f114'] || 0) + adet;
-  QTY['cv114']= (QTY['cv114']|| 0) + adet;
-  QTY['n114'] = (QTY['n114'] || 0) + adet * 2;
+  QTY[bVid] = (QTY[bVid] || 0) + adet * 2;
+
+  const bFiltId = emisFiltId(bDiam);
+  if (QTY[bFiltId] !== undefined) QTY[bFiltId] = (QTY[bFiltId] || 0) + adet;
+
+  const bCvId = cvId(bDiam);
+  QTY[bCvId] = (QTY[bCvId] || 0) + adet;
+
+  const bNipId = nipIdForDiam(bDiam);
+  if (QTY[bNipId] !== undefined) QTY[bNipId] = (QTY[bNipId] || 0) + adet * 2;
 }
 
 /**
