@@ -15,6 +15,26 @@ export const DIAM_LABEL = {
   q140:'Q140', q160:'Q160', q180:'Q180', q200:'Q200', q225:'Q225', q250:'Q250',
 };
 
+// ── Ürün ID → Marka Kategorisi Eşleşmesi ──────────────────────────────
+// Her ürünün hangi marka kategorisine ait olduğunu belirler.
+// Böylece Step1'de seçilen marka sadece kendi kategorisindeki ürünleri etkiler.
+export function productBrandCat(id) {
+  if (id.startsWith('pir-v')) return 'valve';   // pirinç küresel vana
+  if (id.startsWith('bd-'))  return 'bd';       // basınç düşürücü
+  if (/^f\d/.test(id))       return 'filter';   // filtre (f34, f1, f114, ...)
+  if (id.startsWith('cv'))   return 'filter';   // çekvalf
+  if (id === 'pump' || id === 'mano' || id === 'air') return 'other';
+  return 'ppr'; // boru, bağlantı, ppr vana, kolektör, union
+}
+
+// Marka kategorisi → config field eşleşmesi
+export const BRAND_CAT_CONFIG = {
+  ppr:    'markaPpr',
+  valve:  'markaPirince',
+  bd:     'markaBd',
+  filter: 'markaFiltre',
+};
+
 // PPR çapı → Pirinç küresel vana ürün ID'si
 export const PIR_VANA_MAP = {
   q20:'pir-v12',   // 1/2"

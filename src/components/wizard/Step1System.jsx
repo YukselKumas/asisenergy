@@ -1,14 +1,20 @@
 // ── Step 1 — Sistem Tanımı ────────────────────────────────────────────
 // Hat seçimi, marka seçimi, bina bilgileri ve mekanik oda tanımları.
 
+import { useEffect } from 'react';
 import { useCalculationStore } from '../../store/calculationStore.js';
+import { useDefinitionsStore } from '../../store/definitionsStore.js';
 import { Card }   from '../ui/Card.jsx';
 import { Field }  from '../ui/Field.jsx';
 import { Button } from '../ui/Button.jsx';
 
 export function Step1System({ goStep }) {
-  const { config, setConfig } = useCalculationStore();
+  const { config, setConfig, loadBrandPrices } = useCalculationStore();
+  const { brands, fetchBrands } = useDefinitionsStore();
   const c = config;
+
+  // İlk yüklemede markaları DB'den çek
+  useEffect(() => { fetchBrands(); }, []);
 
   function upd(key, val) { setConfig({ [key]: val }); }
   function updN(key, val) { setConfig({ [key]: isNaN(parseFloat(val)) ? 0 : parseFloat(val) }); }
@@ -18,38 +24,40 @@ export function Step1System({ goStep }) {
       {/* Marka Seçimi */}
       <Card accent="green" title="Marka Seçimi" badge="★">
         <p style={{ fontSize:12, color:'var(--muted)', marginBottom:16 }}>
-          Her kategori için marka seçin. Fiyatlar <strong>Adım 5 — Fiyat Listesi</strong>'nde düzenlenebilir.
+          Her kategori için marka seçin. Markalar <strong>Tanımlamalar</strong> sayfasından yönetilir.
+          Fiyatlar seçilen markaya göre otomatik yüklenir.
         </p>
         <div className="g g4">
           <Field label="PPR Boru & Bağlantı" hint="Boru, dirsek, te, redüksiyon">
-            <select value={c.markaPpr} onChange={e => upd('markaPpr', e.target.value)}>
-              <option value="kalde">Kalde</option>
-              <option value="firat">Fırat Boru</option>
-              <option value="wavin">Wavin Tigris</option>
-              <option value="pilsa">Pilsa</option>
-              <option value="diger">Diğer / Manuel</option>
+            <select value={c.markaPpr} onChange={e => { upd('markaPpr', e.target.value); loadBrandPrices('ppr', e.target.value); }}>
+              <option value="">— Marka seçin —</option>
+              {brands.filter(b => b.category === 'ppr').map(b =>
+                <option key={b.id} value={b.id}>{b.name}</option>
+              )}
             </select>
           </Field>
           <Field label="Pirinç Küresel Vana" hint="Kolektör çıkış, emiş hattı">
-            <select value={c.markaPirince} onChange={e => upd('markaPirince', e.target.value)}>
-              <option value="standart">Standart / Press</option>
-              <option value="caleffi">Caleffi</option>
-              <option value="imi">IMI / Crane</option>
-              <option value="watts">Watts</option>
+            <select value={c.markaPirince} onChange={e => { upd('markaPirince', e.target.value); loadBrandPrices('valve', e.target.value); }}>
+              <option value="">— Marka seçin —</option>
+              {brands.filter(b => b.category === 'valve').map(b =>
+                <option key={b.id} value={b.id}>{b.name}</option>
+              )}
             </select>
           </Field>
           <Field label="Basınç Düşürücü" hint="Daire başı BD">
-            <select value={c.markaBd} onChange={e => upd('markaBd', e.target.value)}>
-              <option value="caleffi">Caleffi</option>
-              <option value="honeywell">Honeywell / Resideo</option>
-              <option value="watts">Watts</option>
+            <select value={c.markaBd} onChange={e => { upd('markaBd', e.target.value); loadBrandPrices('bd', e.target.value); }}>
+              <option value="">— Marka seçin —</option>
+              {brands.filter(b => b.category === 'bd').map(b =>
+                <option key={b.id} value={b.id}>{b.name}</option>
+              )}
             </select>
           </Field>
           <Field label="Filtre & Çekvalf">
-            <select value={c.markaFiltre} onChange={e => upd('markaFiltre', e.target.value)}>
-              <option value="kalde">Kalde (PPR ile aynı)</option>
-              <option value="caleffi">Caleffi</option>
-              <option value="watts">Watts</option>
+            <select value={c.markaFiltre} onChange={e => { upd('markaFiltre', e.target.value); loadBrandPrices('filter', e.target.value); }}>
+              <option value="">— Marka seçin —</option>
+              {brands.filter(b => b.category === 'filter').map(b =>
+                <option key={b.id} value={b.id}>{b.name}</option>
+              )}
             </select>
           </Field>
         </div>

@@ -4,6 +4,7 @@
 
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase.js';
+import { PRICES } from '../lib/calculator/constants.js';
 
 export const useDefinitionsStore = create((set, get) => ({
   // ── State ──────────────────────────────────────────────────────────
@@ -47,7 +48,46 @@ export const useDefinitionsStore = create((set, get) => ({
     set(state => ({ brands: state.brands.filter(b => b.id !== id) }));
   },
 
+  /** Kategoriye göre markaları döndür */
+  getBrandsByCategory: (category) => {
+    return get().brands.filter(b => b.category === category);
+  },
+
   // ── Fiyat Listesi ─────────────────────────────────────────────────
+
+  /** Belirli bir markanın fiyat haritasını döndürür: {productId: {list, disc}} */
+  fetchBrandPriceMap: async (brandId) => {
+    if (!brandId) return {};
+    const { data, error } = await supabase
+      .from('price_lists')
+      .select('product_id, list_price, discount_pct')
+      .eq('brand_id', brandId)
+      .eq('is_active', true);
+    if (error || !data) return {};
+    const map = {};
+    data.forEach(row => {
+      map[row.product_id] = {
+        list: parseFloat(row.list_price),
+        disc: parseFloat(row.discount_pct),
+      };
+    });
+    return map;
+  },
+
+  /** Sabit fiyat verilerinden marka fiyatlarını DB'ye seed et */
+  seedBrandFromConstants: async (brandId, sourceOverrides = null) => {
+    const rows = PRICES.map(p => {
+      const ov = sourceOverrides?.[p.id];
+      return {
+        product_id:   p.id,
+        product_name: p.n,
+        unit:         p.u,
+        list_price:   ov !== undefined ? ov : p.list,
+        discount_pct: p.disc,
+      };
+    });
+    await get().upsertPrices(brandId, rows);
+  },
 
   /** Belirli bir markanın fiyat listesini çek */
   fetchPriceList: async (brandId) => {
