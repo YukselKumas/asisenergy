@@ -8,6 +8,7 @@ import { Card }   from '../components/ui/Card.jsx';
 import { Button } from '../components/ui/Button.jsx';
 import { Badge }  from '../components/ui/Badge.jsx';
 import { showToast } from '../components/ui/Toast.jsx';
+import { GlassSelect } from '../components/ui/GlassSelect.jsx';
 
 const TR = (x, d=2) => new Intl.NumberFormat('tr-TR', { minimumFractionDigits:d, maximumFractionDigits:d }).format(x);
 
@@ -152,7 +153,7 @@ function PriceListTab() {
         <div style={{ display:'flex', gap:12, marginBottom:16, flexWrap:'wrap', alignItems:'flex-end' }}>
           <div className="field" style={{ minWidth:240 }}>
             <label>Marka Seç</label>
-            <select value={selBrand} onChange={e => handleBrandSelect(e.target.value)} style={{ background:'var(--white)', border:'1px solid var(--border2)', borderRadius:'var(--r2)', padding:'8px 10px', fontSize:13, outline:'none', width:'100%' }}>
+            <GlassSelect value={selBrand} onChange={e => handleBrandSelect(e.target.value)}>
               <option value="">— Marka seçin —</option>
               {brandGroups.map(g => (
                 <optgroup key={g.value} label={g.label}>
@@ -161,7 +162,7 @@ function PriceListTab() {
                   ))}
                 </optgroup>
               ))}
-            </select>
+            </GlassSelect>
           </div>
           {/* Kategori filtresi */}
           <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
@@ -275,9 +276,9 @@ function BrandsTab() {
           </div>
           <div className="field">
             <label>Kategori</label>
-            <select value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
+            <GlassSelect value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
               {BRAND_CAT_OPT.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
+            </GlassSelect>
           </div>
           <div className="field">
             <label>Açıklama</label>

@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { showToast } from '../components/ui/Toast.jsx';
+import { GlassSelect } from '../components/ui/GlassSelect.jsx';
 
 const TR_DATE = d => new Date(d).toLocaleDateString('tr-TR');
 
@@ -206,13 +207,10 @@ export function UsersPage() {
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 4 }}>Rol</label>
-              <select
-                value={newUser.role} onChange={e => setNewUser(p => ({ ...p, role: e.target.value }))}
-                style={{ padding: '8px 10px', borderRadius: 6, border: '1.5px solid #e2e8f0', fontSize: 13, fontFamily: 'var(--sans)', cursor: 'pointer', outline: 'none', background: '#fff' }}
-              >
+              <GlassSelect value={newUser.role} onChange={e => setNewUser(p => ({ ...p, role: e.target.value }))}>
                 <option value="user">Kullanıcı</option>
                 <option value="admin">Admin</option>
-              </select>
+              </GlassSelect>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
@@ -298,20 +296,15 @@ export function UsersPage() {
 
                       {/* Rol */}
                       <td>
-                        <select
+                        <GlassSelect
                           value={u.role || 'user'}
                           disabled={isSaving}
                           onChange={e => updateProfile(u.id, { role: e.target.value })}
-                          style={{
-                            ...roleColor(u.role || 'user'),
-                            borderRadius: 6, padding: '3px 8px', fontSize: 11,
-                            fontWeight: 700, cursor: 'pointer', outline: 'none',
-                            fontFamily: 'var(--sans)',
-                          }}
+                          style={{ minWidth: 130 }}
                         >
                           <option value="user">Kullanıcı</option>
                           <option value="admin">Admin</option>
-                        </select>
+                        </GlassSelect>
                       </td>
 
                       {/* Durum */}
