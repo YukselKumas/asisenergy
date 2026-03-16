@@ -204,6 +204,7 @@ export const PRICES = [
   {id:'cv1',  cat:'mekanik',n:'1" ÇEKVALF',                      u:'adet', list:380.00, disc:0},
   {id:'cv112',cat:'mekanik',n:'1½" ÇEKVALF',                     u:'adet', list:550.00, disc:0},
   {id:'cv2',  cat:'mekanik',n:'2" ÇEKVALF',                      u:'adet', list:780.00, disc:0},
+  {id:'cv212',cat:'mekanik',n:'2½" ÇEKVALF',                     u:'adet', list:980.00, disc:0},
   /* Oynar Union */
   {id:'union32',cat:'mekanik',n:'1" PPR OYNAR UNION',            u:'adet', list:0,      disc:0},
   {id:'union40',cat:'mekanik',n:'1¼" PPR OYNAR UNION',           u:'adet', list:0,      disc:0},

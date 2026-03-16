@@ -143,7 +143,7 @@ export function KollectorCard({ hatId }) {
               const c = row.vd.replace('q','');
               const cvLabel  = row.hasCv ? (() => {
                 const id = cvIdFn(row.vd);
-                return { 'cv34':'¾" Çekvalf','cv1':'1" Çekvalf','cv114':'1¼" Çekvalf','cv112':'1½" Çekvalf','cv2':'2" Çekvalf' }[id] || id;
+                return { 'cv34':'¾" Çekvalf','cv1':'1" Çekvalf','cv114':'1¼" Çekvalf','cv112':'1½" Çekvalf','cv2':'2" Çekvalf','cv212':'2½" Çekvalf' }[id] || id;
               })() : '—';
               const sonLabel = row.hasCv
                 ? (row.vd==='q20'||row.vd==='q25'||row.vd==='q32' ? '¾" Sarı Nipel' : '1¼" Sarı Nipel')
