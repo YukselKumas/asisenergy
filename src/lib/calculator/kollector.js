@@ -42,7 +42,7 @@ export function cvId(vd) {
   if (vd === 'q50') return 'cv112';
   if (vd === 'q63') return 'cv2';
   if (vd === 'q75') return 'cv212';
-  return 'cv212';
+  return 'cv3';
 }
 
 /** Kolektör ID'si (mat: 'ppr' | 'paslanmaz', diam: 'q90') */
