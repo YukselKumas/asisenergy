@@ -131,6 +131,7 @@ export function applyBdToQty(QTY, sons, floors) {
 export function applyFixedMechToQty(QTY, cfg) {
   QTY['pump'] = (QTY['pump'] || 0) + Math.ceil(cfg.pump  || 0);
   QTY['mano'] = (QTY['mano'] || 0) + Math.ceil(cfg.mano  || 0);
+  QTY['term'] = (QTY['term'] || 0) + Math.ceil(cfg.term  || 0);
   QTY['air']  = (QTY['air']  || 0) + Math.ceil(cfg.air   || 0);
 
   const mainfDiam = cfg.mainfDiam || 'f114';

@@ -39,8 +39,8 @@ export function calculate(config, priceOverride = {}) {
     hidroforAdet, hidroforDiam, hidroforVana, hidroforCv, hidroforUnion, hidroforUnionDiam, hidroforMano,
     emisDiam, emisVana, emisNip, emisFilt,
     boylerAdet, boylerDiam, boylerVana,
-    pump, mano, air, mainf, mainfDiam,
-    dHotmeter, dColdmeter, dAda, dFilt, dCv, dNip, dSaatrek, dValve,
+    pump, mano, term, air, mainf, mainfDiam,
+    dHotmeter, dColdmeter, dAda, dAda2, dFilt, dCv, dNip, dSaatrek, dValveIn, dValve,
   } = config;
 
   if (!totalFlats || totalFlats <= 0) {
@@ -112,27 +112,35 @@ export function calculate(config, priceOverride = {}) {
   applyFittingsToQty(QTY, teeTotal, iteeTotal, redTotal, couTotal);
 
   // ── 7. Daire sayaç grubu ──────────────────────────────────────────
-  const sayacTotal = totalFlats * ((hasHot ? dHotmeter : 0) + (hasCold ? dColdmeter : 0));
-  const dAdaQ      = Math.ceil(sayacTotal * dAda);
-  const dFiltQ     = Math.ceil(sayacTotal * dFilt);
-  const dCvQ       = Math.ceil(sayacTotal * dCv);
-  const dNipQ      = Math.ceil(dCvQ * dNip);
-  const dSaatrekQ  = Math.ceil(sayacTotal * dSaatrek);
-  const dValveQ    = Math.ceil(sayacTotal * dValve);
+  const sayacTotal  = totalFlats * ((hasHot ? dHotmeter : 0) + (hasCold ? dColdmeter : 0));
+  const dAdaQ       = Math.ceil(sayacTotal * (dAda      ?? 1));
+  const dAda2Q      = Math.ceil(sayacTotal * (dAda2     ?? 1));
+  const dFiltQ      = Math.ceil(sayacTotal * dFilt);
+  const dCvQ        = Math.ceil(sayacTotal * dCv);
+  const dNipQ       = Math.ceil(dCvQ * dNip);
+  const dSaatrekQ   = Math.ceil(sayacTotal * dSaatrek);
+  const dValveInQ   = Math.ceil(sayacTotal * (dValveIn  ?? 1));  // Ana kesme — sayaç önü (branşman çapı)
+  const dValveQ     = Math.ceil(sayacTotal * dValve);             // İkinci vana — sayaç arkası (bir küçük)
 
-  const adaDaire   = 'ada'      + brDiam.replace('q','');
-  const filtDaire  = brDiam === 'q32' ? 'f1'   : 'f34';
-  const cvDaire    = brDiam === 'q32' ? 'cv1'  : 'cv34';
-  const nipDaire   = brDiam === 'q32' ? 'n114' : 'n34';
-  const saatDaire  = brDiam === 'q32' ? 'saatrek32' : 'saatrek25';
-  const vanaDaire  = brDiam === 'q32' ? 'pir-v1' : brDiam === 'q20' ? 'pir-v12' : 'pir-v34';
+  // Büyük adaptör = branşman çapı, küçük = bir boy küçük
+  const adaDaire    = 'ada' + brDiam.replace('q','');
+  const adaDaire2   = brDiam === 'q32' ? 'ada25' : 'ada25';  // bir küçük → q25/¾"
+  const filtDaire   = brDiam === 'q32' ? 'f1'   : 'f34';
+  const cvDaire     = brDiam === 'q32' ? 'cv1'  : 'cv34';
+  const nipDaire    = brDiam === 'q32' ? 'n114' : 'n34';
+  const saatDaire   = brDiam === 'q32' ? 'saatrek32' : 'saatrek25';
+  // Ana kesme vanası = branşman çapı; ikinci vana = bir küçük çap
+  const vanaInDaire = brDiam === 'q32' ? 'pir-v1'  : brDiam === 'q25' ? 'pir-v34' : 'pir-v12';
+  const vanaDaire   = brDiam === 'q32' ? 'pir-v34' : 'pir-v12';
 
-  QTY[adaDaire]  = (QTY[adaDaire] ||0) + dAdaQ;
-  QTY[filtDaire] = (QTY[filtDaire]||0) + dFiltQ;
-  if (dCvQ  > 0) QTY[cvDaire]  = (QTY[cvDaire] ||0) + dCvQ;
-  if (dNipQ > 0) QTY[nipDaire] = (QTY[nipDaire]||0) + dNipQ;
-  QTY[saatDaire] = (QTY[saatDaire]||0) + dSaatrekQ;
-  QTY[vanaDaire] = (QTY[vanaDaire]||0) + dValveQ;
+  QTY[adaDaire]    = (QTY[adaDaire]   ||0) + dAdaQ;
+  QTY[adaDaire2]   = (QTY[adaDaire2]  ||0) + dAda2Q;
+  QTY[filtDaire]   = (QTY[filtDaire]  ||0) + dFiltQ;
+  if (dCvQ    > 0) QTY[cvDaire]    = (QTY[cvDaire]   ||0) + dCvQ;
+  if (dNipQ   > 0) QTY[nipDaire]   = (QTY[nipDaire]  ||0) + dNipQ;
+  QTY[saatDaire]   = (QTY[saatDaire] ||0) + dSaatrekQ;
+  QTY[vanaInDaire] = (QTY[vanaInDaire]||0) + dValveInQ;
+  QTY[vanaDaire]   = (QTY[vanaDaire]  ||0) + dValveQ;
 
   // ── 8. Kolektörler ────────────────────────────────────────────────
   const kolSummary = [];
@@ -169,7 +177,7 @@ export function calculate(config, priceOverride = {}) {
   });
   applyBoylerToQty(QTY, { boylerAdet, boylerDiam, boylerVana });
   applyBdToQty(QTY, activeSons, floors);
-  applyFixedMechToQty(QTY, { pump, mano, air, mainf, mainfDiam });
+  applyFixedMechToQty(QTY, { pump, mano, term, air, mainf, mainfDiam });
 
   // ── 11. Maliyet ───────────────────────────────────────────────────
   const { lines, grandNet, kdvAmt, grandTotal } = calcCost(QTY, priceOverride, kdvRate);
@@ -199,6 +207,6 @@ export function calculate(config, priceOverride = {}) {
     coldYatay, coldDikey,
     totalFlats,
     shaftVanaTotal: shaftVanaAdet * shaft * svHatlar,
-    flatValve: dValveQ,
+    flatValve: dValveInQ + dValveQ,
   };
 }
