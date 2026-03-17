@@ -252,12 +252,14 @@ export function Step2Pipeline({ goStep }) {
         </div>
         <div className="slbl">Sayaç Başına Montaj Parçaları</div>
         <div className="g g4">
-          <Field label="Dış Dişli Adaptör" hint="Sayaç başına"><input type="number" value={c.dAda}     min="0" onChange={e => updN('dAda',     e.target.value)} /></Field>
-          <Field label="Filtre"            hint="Sayaç başına"><input type="number" value={c.dFilt}    min="0" onChange={e => updN('dFilt',    e.target.value)} /></Field>
-          <Field label="Çekvalf"           hint="0=yok, 1=var"><input type="number" value={c.dCv}      min="0" onChange={e => updN('dCv',      e.target.value)} /></Field>
-          <Field label="Sarı Nipel"        hint="Çekvalf başına"><input type="number" value={c.dNip}    min="0" onChange={e => updN('dNip',    e.target.value)} /></Field>
-          <Field label="Sayaç Rakoru">     <input type="number" value={c.dSaatrek} min="0" onChange={e => updN('dSaatrek', e.target.value)} /></Field>
-          <Field label="Küresel Vana">     <input type="number" value={c.dValve}   min="0" onChange={e => updN('dValve',   e.target.value)} /></Field>
+          <Field label="Adaptör Büyük"      hint="Sayaç girişi (boru→metal)"><input type="number" value={c.dAda}      min="0" onChange={e => updN('dAda',      e.target.value)} /></Field>
+          <Field label="Ana Kesme Vanası"   hint="Sayaç önü — branşman çapı"><input type="number" value={c.dValveIn}  min="0" onChange={e => updN('dValveIn',  e.target.value)} /></Field>
+          <Field label="İkinci Vana"        hint="Sayaç arkası — bir küçük çap"><input type="number" value={c.dValve}   min="0" onChange={e => updN('dValve',   e.target.value)} /></Field>
+          <Field label="Filtre"             hint="Sayaç başına"><input type="number" value={c.dFilt}     min="0" onChange={e => updN('dFilt',     e.target.value)} /></Field>
+          <Field label="Çekvalf"            hint="0=yok, 1=var"><input type="number" value={c.dCv}       min="0" onChange={e => updN('dCv',       e.target.value)} /></Field>
+          <Field label="Sarı Nipel"         hint="Çekvalf başına"><input type="number" value={c.dNip}     min="0" onChange={e => updN('dNip',     e.target.value)} /></Field>
+          <Field label="Adaptör Küçük"      hint="Sayaç çıkışı (metal→daire)"><input type="number" value={c.dAda2}     min="0" onChange={e => updN('dAda2',     e.target.value)} /></Field>
+          <Field label="Sayaç Rakoru">      <input type="number" value={c.dSaatrek}  min="0" onChange={e => updN('dSaatrek',  e.target.value)} /></Field>
         </div>
       </Card>
 

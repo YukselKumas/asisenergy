@@ -46,6 +46,7 @@ export const DEFAULT_CONFIG = {
   tankAdet:       1,
   pump:           1,
   mano:           2,
+  term:           2,
   air:            2,
   mainf:          2,
   mainfDiam:      'f114',
@@ -79,12 +80,14 @@ export const DEFAULT_CONFIG = {
   brCold:  2,
   dHotmeter:  1,
   dColdmeter: 1,
-  dAda:    1,
-  dFilt:   1,
-  dCv:     1,
-  dNip:    2,
-  dSaatrek:1,
-  dValve:  1,
+  dAda:     1,   // Dış dişli adaptör büyük (sayaç girişi)
+  dAda2:    1,   // Dış dişli adaptör küçük (sayaç çıkışı)
+  dFilt:    1,
+  dCv:      1,
+  dNip:     2,
+  dSaatrek: 1,
+  dValveIn: 1,   // Ana kesme vanası - sayaç önü (branşman çapı)
+  dValve:   1,   // İkinci vana - sayaç arkası (bir küçük çap)
 
   // Kolektörler
   kolektors: [],
