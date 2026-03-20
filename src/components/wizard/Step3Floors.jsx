@@ -3,8 +3,9 @@
 
 import { useEffect } from 'react';
 import { useCalculationStore } from '../../store/calculationStore.js';
-import { Card }   from '../ui/Card.jsx';
-import { Button } from '../ui/Button.jsx';
+import { Card }        from '../ui/Card.jsx';
+import { Button }      from '../ui/Button.jsx';
+import { showToast }   from '../ui/Toast.jsx';
 
 function katLabel(n) {
   if (n === 0) return 'Zemin Kat';
@@ -103,7 +104,12 @@ export function Step3Floors({ goStep }) {
 
       <div className="btn-row">
         <Button variant="default" onClick={() => goStep(1)}>← Geri</Button>
-        <Button variant="primary" onClick={() => goStep(3)}>Devam: Ekipman →</Button>
+        <Button variant="primary" onClick={() => {
+          if (!floors || floors.length === 0) { showToast('⚠ Kat listesi boş. Adım 1\'de kat sayısı girin.'); return; }
+          if (!(totalFlats > 0)) { showToast('⚠ Hiç daire girilmemiş. Kat başına daire sayısını doldurun.'); return; }
+          if (totalFlats !== config.flatcheck) { showToast(`⚠ Toplam daire (${totalFlats}) kontrol değerinden (${config.flatcheck}) farklı. Devam etmek için sayıları eşitleyin.`); return; }
+          goStep(3);
+        }}>Devam: Ekipman →</Button>
       </div>
     </div>
   );

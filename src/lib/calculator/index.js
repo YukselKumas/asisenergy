@@ -27,7 +27,7 @@ export function calculate(config, priceOverride = {}) {
   const {
     shaft, floorH, kdvRate,
     hasHot, hasCirc, hasCold,
-    zones, vertStep, vertZoneCount, firstFloor,
+    zones, vertStep, vertZoneCount, shaftFloor, firstFloor,
     totalFlats, floors,
     hyHotStart, hyHotL1, hyHotD2, hyHotL2, hyHotD3, hyHotL3,
     hyColdStart, hyColdL1, hyColdD2, hyColdL2, hyColdD3, hyColdL3,
@@ -53,8 +53,9 @@ export function calculate(config, priceOverride = {}) {
   const activeZones = (zones || []).slice(0, vertZoneCount || (zones || []).length);
 
   // ── 1. Dikey segmentler ────────────────────────────────────────────
-  // Her zone şaft tabanından (firstFloor) kendi bitiş katına kadar boru çeker
-  const allSegs = calcAllSegments(activeZones, floorH || 4, vertStep, firstFloor || 1);
+  // Her zone şaft tabanından (shaftFloor) kendi bitiş katına kadar boru çeker
+  const shaftStart = shaftFloor ?? firstFloor ?? 1;
+  const allSegs = calcAllSegments(activeZones, floorH || 4, vertStep, shaftStart);
 
   // ── 2. Boru haritası ───────────────────────────────────────────────
   const pipe = emptyPipeMap();

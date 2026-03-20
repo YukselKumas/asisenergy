@@ -20,7 +20,8 @@ export const DEFAULT_CONFIG = {
   markaFiltre:  '',   // Brand UUID
   floor:        10,
   flatcheck:    40,
-  firstFloor:   1,
+  firstFloor:   1,     // Daire başlangıç katı (Step 3 kat tablosu için)
+  shaftFloor:   1,     // Şaft / mekanik oda başlangıç katı (boru metrajı için, negatif olabilir)
   floorH:       4,
   shaft:        4,
 
