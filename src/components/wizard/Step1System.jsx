@@ -10,6 +10,31 @@ import { Button }      from '../ui/Button.jsx';
 import { GlassSelect } from '../ui/GlassSelect.jsx';
 import { showToast }   from '../ui/Toast.jsx';
 
+function floorLabel(n) {
+  if (n === 0) return '0 — Zemin Kat';
+  if (n < 0)  return `${n} — Bodrum`;
+  return `${n}. Kat`;
+}
+
+function FloorStepper({ value, onChange, min = -20, max = 250 }) {
+  const btnStyle = {
+    width:28, height:28, borderRadius:'var(--r2)',
+    border:'1px solid var(--border)', background:'var(--white)',
+    cursor:'pointer', fontSize:18, lineHeight:1,
+    display:'flex', alignItems:'center', justifyContent:'center',
+    flexShrink:0, fontFamily:'var(--mono)',
+  };
+  return (
+    <div style={{ display:'flex', alignItems:'center', gap:6, height:36 }}>
+      <button type="button" style={btnStyle} onClick={() => onChange(Math.max(min, value - 1))}>−</button>
+      <div style={{ flex:1, textAlign:'center', fontSize:13, fontWeight:700, fontFamily:'var(--mono)', whiteSpace:'nowrap' }}>
+        {floorLabel(value)}
+      </div>
+      <button type="button" style={btnStyle} onClick={() => onChange(Math.min(max, value + 1))}>+</button>
+    </div>
+  );
+}
+
 export function Step1System({ goStep }) {
   const { config, setConfig, loadBrandPrices } = useCalculationStore();
   const { brands, fetchBrands } = useDefinitionsStore();
@@ -27,14 +52,6 @@ export function Step1System({ goStep }) {
   function updInt(key, val) {
     const n = parseInt(val, 10);
     if (!isNaN(n)) setConfig({ [key]: n });
-  }
-
-  // Kat numarası seçim listesi: -20'den 250'ye
-  const FLOOR_OPTS = Array.from({ length: 271 }, (_, i) => i - 20);
-  function floorLabel(n) {
-    if (n === 0) return '0 — Zemin Kat';
-    if (n < 0)  return `${n} — Bodrum`;
-    return `${n}. Kat`;
   }
 
   return (
@@ -149,14 +166,10 @@ export function Step1System({ goStep }) {
             <input type="number" value={c.flatcheck} min="0" onChange={e => updN('flatcheck', e.target.value)} />
           </Field>
           <Field label="Şaft Başlangıç Katı" hint="Mekanik oda / kolektör bulunduğu kat">
-            <GlassSelect value={c.shaftFloor ?? 1} onChange={e => updInt('shaftFloor', e.target.value)}>
-              {FLOOR_OPTS.map(n => <option key={n} value={n}>{floorLabel(n)}</option>)}
-            </GlassSelect>
+            <FloorStepper value={c.shaftFloor ?? 1} onChange={v => upd('shaftFloor', v)} />
           </Field>
           <Field label="Daire Başlangıç Katı" hint="İlk daireli kat (Adım 3 kat listesi buradan başlar)">
-            <GlassSelect value={c.firstFloor} onChange={e => updInt('firstFloor', e.target.value)}>
-              {FLOOR_OPTS.map(n => <option key={n} value={n}>{floorLabel(n)}</option>)}
-            </GlassSelect>
+            <FloorStepper value={c.firstFloor} onChange={v => upd('firstFloor', v)} />
           </Field>
           <Field label="Kat Yüksekliği (m)" hint="Dikey boru hesabında kullanılır">
             <input type="number" value={c.floorH} min="1" step="0.1" onChange={e => updN('floorH', e.target.value)} />
