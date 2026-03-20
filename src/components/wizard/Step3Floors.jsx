@@ -17,9 +17,13 @@ export function Step3Floors({ goStep }) {
   const { config, setConfig } = useCalculationStore();
   const { floor, firstFloor, flatcheck, floors } = config;
 
-  // Kat tablosu yoksa veya kat sayısı değiştiyse yeniden oluştur
+  // Kat tablosu yoksa, kat sayısı veya başlangıç katı değiştiyse yeniden oluştur
   useEffect(() => {
-    if (!floors || floors.length !== floor) {
+    const expectedFirst = firstFloor ?? 1;
+    const actualFirst   = floors && floors.length > 0
+      ? floors[floors.length - 1].floor   // autoDistribute en alttakini sona iter
+      : null;
+    if (!floors || floors.length !== floor || actualFirst !== expectedFirst) {
       autoDistribute();
     }
   }, [floor, firstFloor]);

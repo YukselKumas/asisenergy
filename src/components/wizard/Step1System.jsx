@@ -18,8 +18,24 @@ export function Step1System({ goStep }) {
   // İlk yüklemede markaları DB'den çek
   useEffect(() => { fetchBrands(); }, []);
 
-  function upd(key, val) { setConfig({ [key]: val }); }
-  function updN(key, val) { setConfig({ [key]: isNaN(parseFloat(val)) ? 0 : parseFloat(val) }); }
+  function upd(key, val)  { setConfig({ [key]: val }); }
+  function updN(key, val) {
+    const n = parseFloat(val);
+    if (!isNaN(n)) setConfig({ [key]: n });
+    // NaN ise (örn: yazım ortasında "-") güncelleme yapma, tarayıcı ara değeri göstersin
+  }
+  function updInt(key, val) {
+    const n = parseInt(val, 10);
+    if (!isNaN(n)) setConfig({ [key]: n });
+  }
+
+  // Kat numarası seçim listesi: -20'den 250'ye
+  const FLOOR_OPTS = Array.from({ length: 271 }, (_, i) => i - 20);
+  function floorLabel(n) {
+    if (n === 0) return '0 — Zemin Kat';
+    if (n < 0)  return `${n} — Bodrum`;
+    return `${n}. Kat`;
+  }
 
   return (
     <div>
@@ -132,11 +148,15 @@ export function Step1System({ goStep }) {
           <Field label="Toplam Daire Sayısı" hint="Katlara otomatik dağıtılır">
             <input type="number" value={c.flatcheck} min="0" onChange={e => updN('flatcheck', e.target.value)} />
           </Field>
-          <Field label="Şaft Başlangıç Katı" hint="Mekanik oda / kolektör katı — negatif olabilir (örn: -3, -1, 0)">
-            <input type="number" value={c.shaftFloor ?? 1} min="-50" max="250" onChange={e => updN('shaftFloor', e.target.value)} />
+          <Field label="Şaft Başlangıç Katı" hint="Mekanik oda / kolektör bulunduğu kat">
+            <GlassSelect value={c.shaftFloor ?? 1} onChange={e => updInt('shaftFloor', e.target.value)}>
+              {FLOOR_OPTS.map(n => <option key={n} value={n}>{floorLabel(n)}</option>)}
+            </GlassSelect>
           </Field>
-          <Field label="Daire Başlangıç Katı" hint="İlk daireli kat numarası (örn: 0, 1)">
-            <input type="number" value={c.firstFloor} min="-20" max="250" onChange={e => updN('firstFloor', e.target.value)} />
+          <Field label="Daire Başlangıç Katı" hint="İlk daireli kat (Adım 3 kat listesi buradan başlar)">
+            <GlassSelect value={c.firstFloor} onChange={e => updInt('firstFloor', e.target.value)}>
+              {FLOOR_OPTS.map(n => <option key={n} value={n}>{floorLabel(n)}</option>)}
+            </GlassSelect>
           </Field>
           <Field label="Kat Yüksekliği (m)" hint="Dikey boru hesabında kullanılır">
             <input type="number" value={c.floorH} min="1" step="0.1" onChange={e => updN('floorH', e.target.value)} />
