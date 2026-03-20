@@ -8,7 +8,6 @@ import { Step3Floors }    from './Step3Floors.jsx';
 import { Step4Equipment } from './Step4Equipment.jsx';
 import { Step5Prices }    from './Step5Prices.jsx';
 import { Step6Results }   from './Step6Results.jsx';
-import { RevisionBar }    from './RevisionBar.jsx';
 
 const STEPS = [
   { label: 'Sistem Tanımı'  },
@@ -77,9 +76,6 @@ export function WizardShell() {
           );
         })}
       </div>
-
-      {/* Revizyon yönetim şeridi */}
-      <RevisionBar />
 
       {/* Aktif panel */}
       <Panel goStep={goStep} currentStep={step} />
