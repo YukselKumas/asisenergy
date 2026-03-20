@@ -8,6 +8,7 @@ import { Card }        from '../ui/Card.jsx';
 import { Field }       from '../ui/Field.jsx';
 import { Button }      from '../ui/Button.jsx';
 import { GlassSelect } from '../ui/GlassSelect.jsx';
+import { showToast }   from '../ui/Toast.jsx';
 
 export function Step1System({ goStep }) {
   const { config, setConfig, loadBrandPrices } = useCalculationStore();
@@ -131,7 +132,10 @@ export function Step1System({ goStep }) {
           <Field label="Toplam Daire Sayısı" hint="Katlara otomatik dağıtılır">
             <input type="number" value={c.flatcheck} min="0" onChange={e => updN('flatcheck', e.target.value)} />
           </Field>
-          <Field label="Daire Başlangıç Katı" hint="Örn: -1, 0 veya 1">
+          <Field label="Şaft Başlangıç Katı" hint="Mekanik oda / kolektör katı — negatif olabilir (örn: -3, -1, 0)">
+            <input type="number" value={c.shaftFloor ?? 1} min="-20" max="10" onChange={e => updN('shaftFloor', e.target.value)} />
+          </Field>
+          <Field label="Daire Başlangıç Katı" hint="İlk daireli kat numarası (örn: 1)">
             <input type="number" value={c.firstFloor} min="-10" max="10" onChange={e => updN('firstFloor', e.target.value)} />
           </Field>
           <Field label="Kat Yüksekliği (m)" hint="Dikey boru hesabında kullanılır">
@@ -314,7 +318,14 @@ export function Step1System({ goStep }) {
       </Card>
 
       <div className="btn-row">
-        <Button variant="primary" onClick={() => goStep(1)}>Devam: Boru Güzergahı →</Button>
+        <Button variant="primary" onClick={() => {
+          if (!c.hasHot && !c.hasCold) { showToast('⚠ En az bir hat seçin (Sıcak Su veya Soğuk Su).'); return; }
+          if (!(c.floor > 0))        { showToast('⚠ Kat sayısı 0\'dan büyük olmalıdır.'); return; }
+          if (!(c.flatcheck > 0))    { showToast('⚠ Toplam daire sayısı girilmedi.'); return; }
+          if (!(c.floorH > 0))       { showToast('⚠ Kat yüksekliği girilmedi.'); return; }
+          if (!(c.shaft > 0))        { showToast('⚠ Şaft sayısı 0\'dan büyük olmalıdır.'); return; }
+          goStep(1);
+        }}>Devam: Boru Güzergahı →</Button>
       </div>
     </div>
   );

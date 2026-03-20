@@ -9,6 +9,7 @@ import { GlassSelect }  from '../ui/GlassSelect.jsx';
 import { KollectorCard } from '../kollector/KollectorCard.jsx';
 import { DIAM_LABEL, DIAM_ORDER } from '../../lib/calculator/constants.js';
 import { calcVertSegments } from '../../lib/calculator/vertical.js';
+import { showToast } from '../ui/Toast.jsx';
 
 const DIAM_OPTS_VERT = ['q20','q25','q32','q40','q50','q63','q75','q90','q110'];
 
@@ -35,8 +36,8 @@ export function Step2Pipeline({ goStep }) {
   }
 
   function zonePreview(zone) {
-    // Boru şaft tabanından (firstFloor) zone bitiş katına kadar uzanır
-    const shaftStart = c.firstFloor || 1;
+    // Boru şaft tabanından (shaftFloor) zone bitiş katına kadar uzanır
+    const shaftStart = c.shaftFloor ?? c.firstFloor ?? 1;
     const fl = Math.max(0, zone.to - shaftStart + 1);
     if (fl <= 0) return '⚠ Geçersiz kat aralığı';
     const segs = calcVertSegments(fl, c.floorH || 4, c.vertStep || 4, zone.startDiam, zone.minDiam);
@@ -293,7 +294,18 @@ export function Step2Pipeline({ goStep }) {
 
       <div className="btn-row">
         <Button variant="default" onClick={() => goStep(0)}>← Geri</Button>
-        <Button variant="primary" onClick={() => goStep(2)}>Devam: Kat Dağılımı →</Button>
+        <Button variant="primary" onClick={() => {
+          const shaftStart = c.shaftFloor ?? c.firstFloor ?? 1;
+          const activeZones = (c.zones || []).slice(0, c.vertZoneCount || 1);
+          for (let i = 0; i < activeZones.length; i++) {
+            const z = activeZones[i];
+            if (!(z.to > shaftStart - 1)) { showToast(`⚠ ${i+1}. Zone bitiş katı şaft başlangıç katından büyük olmalıdır.`); return; }
+            if (i > 0 && z.from <= activeZones[i-1].to) { showToast(`⚠ ${i+1}. Zone başlangıç katı ${i}. Zone bitiş katından sonra olmalıdır.`); return; }
+          }
+          if (c.hasHot && !(c.hyHotL1 > 0)) { showToast('⚠ Sıcak su yatay hat uzunluğu (Segment 1) girilmedi.'); return; }
+          if (c.hasCold && !(c.hyColdL1 > 0)) { showToast('⚠ Soğuk su yatay hat uzunluğu (Segment 1) girilmedi.'); return; }
+          goStep(2);
+        }}>Devam: Kat Dağılımı →</Button>
       </div>
     </div>
   );
