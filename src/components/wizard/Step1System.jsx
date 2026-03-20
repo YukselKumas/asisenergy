@@ -352,6 +352,10 @@ export function Step1System({ goStep }) {
 
       <div className="btn-row">
         <Button variant="primary" onClick={() => {
+          if (!c.markaPpr)      { showToast('⚠ PPR Boru & Bağlantı markası seçilmemiş.'); return; }
+          if (!c.markaPirince)  { showToast('⚠ Pirinç Küresel Vana markası seçilmemiş.'); return; }
+          if (!c.markaBd)       { showToast('⚠ Basınç Düşürücü markası seçilmemiş.'); return; }
+          if (!c.markaFiltre)   { showToast('⚠ Filtre & Çekvalf markası seçilmemiş.'); return; }
           if (!c.hasHot && !c.hasCold) { showToast('⚠ En az bir hat seçin (Sıcak Su veya Soğuk Su).'); return; }
           if (!(c.floor > 0))        { showToast('⚠ Kat sayısı 0\'dan büyük olmalıdır.'); return; }
           if (!(c.flatcheck > 0))    { showToast('⚠ Toplam daire sayısı girilmedi.'); return; }
