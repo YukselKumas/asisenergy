@@ -46,19 +46,22 @@ export function calcVertSegments(floorCount, floorH, step, startDiam, minDiam) {
 }
 
 /**
- * Tüm sonların segment listesini birleştirir ve şaft başına toplam metrajı döndürür.
- * @param {Array} sons - [{from, to, startDiam, minDiam}]
- * @param {number} floorH - kat yüksekliği
- * @param {number} step   - çap küçülme adımı
- * @returns {Array<{diam, m, son}>}
+ * Tüm zone'ların segment listesini birleştirir ve şaft başına toplam metrajı döndürür.
+ * Her zone şaft tabanından (shaftStart) kendi bitiş katına (zone.to) kadar boru çeker.
+ * @param {Array}  zones      - [{from, to, startDiam, minDiam}]
+ * @param {number} floorH     - kat yüksekliği
+ * @param {number} step       - çap küçülme adımı
+ * @param {number} shaftStart - binanın başlangıç kat numarası (varsayılan: 1)
+ * @returns {Array<{diam, m, zone}>}
  */
-export function calcAllSegments(sons, floorH, step) {
+export function calcAllSegments(zones, floorH, step, shaftStart = 1) {
   const allSegs = [];
 
-  sons.forEach((son, i) => {
-    const floorCount = Math.max(0, son.to - son.from + 1);
-    const segs = calcVertSegments(floorCount, floorH, step, son.startDiam, son.minDiam);
-    segs.forEach(s => allSegs.push({ ...s, son: i }));
+  zones.forEach((zone, i) => {
+    // Boru fiziksel olarak şaft tabanından (shaftStart) zone'un bitiş katına kadar uzanır
+    const floorCount = Math.max(0, zone.to - shaftStart + 1);
+    const segs = calcVertSegments(floorCount, floorH, step, zone.startDiam, zone.minDiam);
+    segs.forEach(s => allSegs.push({ ...s, zone: i }));
   });
 
   return allSegs;

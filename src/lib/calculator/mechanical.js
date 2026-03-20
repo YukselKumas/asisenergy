@@ -98,27 +98,27 @@ export function applyBoylerToQty(QTY, cfg) {
 
 /**
  * Basınç düşürücü (BD) ekipmanlarını QTY'ye ekler.
- * Her son için kendi bd konfigürasyonu vardır.
+ * Her zone için kendi bd konfigürasyonu vardır.
  * @param {Object} QTY
- * @param {Array}  sons    - [{from, to, bdAktif, bdDiam, bdTo}]
+ * @param {Array}  zones   - [{from, to, bdAktif, bdDiam, bdTo}]
  * @param {Array}  floors  - [{floor, count}]  kat dağılımı
  */
-export function applyBdToQty(QTY, sons, floors) {
-  sons.forEach(son => {
-    if (son.bdAktif !== 'evet') return;
+export function applyBdToQty(QTY, zones, floors) {
+  zones.forEach(zone => {
+    if (zone.bdAktif !== 'evet') return;
 
-    const bdEffTo = Math.min(son.bdTo ?? son.to, son.to);
+    const bdEffTo = Math.min(zone.bdTo ?? zone.to, zone.to);
     let bdFlats = 0;
 
     floors.forEach(f => {
-      if (f.floor >= son.from && f.floor <= bdEffTo) {
+      if (f.floor >= zone.from && f.floor <= bdEffTo) {
         bdFlats += f.count;
       }
     });
 
     if (bdFlats <= 0) return;
 
-    const bdId = 'bd-' + (son.bdDiam || '34');
+    const bdId = 'bd-' + (zone.bdDiam || '34');
     if (QTY[bdId] !== undefined) QTY[bdId] = (QTY[bdId] || 0) + bdFlats;
     QTY['n34'] = (QTY['n34'] || 0) + bdFlats;
   });

@@ -58,11 +58,11 @@ export const DEFAULT_CONFIG = {
   circYatay:   60,
   circDikey:   40,
   circFlat:    1,
-  vertSonCount: 3,
-  vertStep:     4,
+  vertZoneCount: 3,
+  vertStep:      4,
 
-  // Çok sonlu şaft sistemi
-  sons: [
+  // Çok zonlu şaft sistemi — her zone şaft tabanından kendi bitiş katına kadar boru çeker
+  zones: [
     { from:1, to:4,  startDiam:'q63', minDiam:'q25', bdAktif:'evet', bdDiam:'34', bdTo:4  },
     { from:5, to:8,  startDiam:'q50', minDiam:'q25', bdAktif:'evet', bdDiam:'34', bdTo:8  },
     { from:9, to:10, startDiam:'q40', minDiam:'q25', bdAktif:'evet', bdDiam:'34', bdTo:10 },
