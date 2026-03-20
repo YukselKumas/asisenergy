@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import * as XLSX from 'xlsx';
 import { useCalculationStore } from '../../store/calculationStore.js';
+import { useDefinitionsStore }  from '../../store/definitionsStore.js';
 import { useAuthStore } from '../../store/authStore.js';
 import { calculate } from '../../lib/calculator/index.js';
 import { DIAM_LABEL, CAT_LABEL } from '../../lib/calculator/constants.js';
@@ -16,12 +17,23 @@ const TR  = (x, d=2) => new Intl.NumberFormat('tr-TR', { minimumFractionDigits:d
 const TI  = x => new Intl.NumberFormat('tr-TR').format(Math.ceil(x));
 
 export function Step6Results({ goStep }) {
-  const { config, result, setResult, saveProject, saveHistory, projectName } = useCalculationStore();
+  const {
+    config, result, setResult, saveProject, saveHistory, projectName,
+    revisions, activeRevId, saveAsRevision, updateActiveRevisionResult,
+  } = useCalculationStore();
+  const { brands } = useDefinitionsStore();
   const { user } = useAuthStore();
   const [error,      setError]      = useState(null);
   const [saving,     setSaving]     = useState(false);
   const [saveName,   setSaveName]   = useState(projectName || '');
   const [showSave,   setShowSave]   = useState(false);
+  const [revSaveName, setRevSaveName] = useState('');
+  const [showRevSave, setShowRevSave] = useState(false);
+
+  function brandName(id) {
+    if (!id) return '?';
+    return brands.find(b => b.id === id)?.name || '?';
+  }
 
   function runCalculation() {
     setError(null);
@@ -31,9 +43,19 @@ export function Step6Results({ goStep }) {
 
       const res = calculate({ ...config, totalFlats }, config.priceOverride || {});
       setResult(res);
+      // Aktif revizyon varsa sonucu otomatik güncelle
+      if (activeRevId) updateActiveRevisionResult(res);
     } catch (err) {
       setError(err.message || 'Hesaplama hatası');
     }
+  }
+
+  function handleSaveRevision() {
+    if (!revSaveName.trim()) { showToast('⚠ Revizyon adı boş olamaz.'); return; }
+    saveAsRevision(revSaveName.trim());
+    showToast(`✓ "${revSaveName.trim()}" revizyonu kaydedildi.`);
+    setShowRevSave(false);
+    setRevSaveName('');
   }
 
   async function handleSave() {
@@ -210,11 +232,37 @@ export function Step6Results({ goStep }) {
           <div className="btn-row no-print">
             <Button variant="default" onClick={() => window.print()}>🖨 Yazdır / PDF</Button>
             <Button variant="success" onClick={exportExcel} style={{ background:'#1d6f42', color:'#fff' }}>📥 Excel İndir</Button>
+            <Button variant="default"
+              onClick={() => { setShowRevSave(!showRevSave); setRevSaveName(`Revizyon ${revisions.length + 1}`); }}
+            >📌 Revizyon Kaydet</Button>
             <Button variant="primary" onClick={() => setShowSave(!showSave)}>💾 Projeyi Kaydet</Button>
             <Button variant="default" onClick={() => goStep(0)}>↩ Başa Dön</Button>
           </div>
 
-          {/* Kaydet formu */}
+          {/* Revizyon kaydet formu */}
+          {showRevSave && (
+            <div style={{ marginTop:10, padding:'12px 16px', background:'rgba(59,130,246,0.05)', border:'1px solid var(--acc)', borderRadius:'var(--r)' }}>
+              <div style={{ fontSize:12, fontWeight:700, color:'var(--acc)', marginBottom:8 }}>
+                📌 Bu hesabı revizyon olarak kaydet
+              </div>
+              <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+                <input
+                  value={revSaveName}
+                  onChange={e => setRevSaveName(e.target.value)}
+                  placeholder="Revizyon adı (örn: Kalde Teklifi)"
+                  style={{ flex:1, minWidth:200, padding:'6px 12px', border:'1px solid var(--border)', borderRadius:'var(--r2)', fontSize:13, fontFamily:'var(--sans)', outline:'none' }}
+                  onKeyDown={e => e.key === 'Enter' && handleSaveRevision()}
+                />
+                <span style={{ fontSize:11, color:'var(--muted)' }}>
+                  PPR: {brandName(config.markaPpr)} · Vana: {brandName(config.markaPirince)}
+                </span>
+                <Button variant="primary" style={{ padding:'5px 14px', fontSize:12 }} onClick={handleSaveRevision}>Kaydet</Button>
+                <Button variant="default" style={{ padding:'5px 10px', fontSize:12 }} onClick={() => setShowRevSave(false)}>İptal</Button>
+              </div>
+            </div>
+          )}
+
+          {/* Proje kaydet formu */}
           {showSave && (
             <div style={{ marginTop:12, padding:16, background:'var(--white)', border:'1px solid var(--border)', borderRadius:'var(--r2)' }}>
               <div className="field" style={{ maxWidth:360 }}>
@@ -229,6 +277,81 @@ export function Step6Results({ goStep }) {
                 <Button variant="default" onClick={() => setShowSave(false)}>İptal</Button>
               </div>
             </div>
+          )}
+
+          {/* Marka Karşılaştırma Tablosu */}
+          {revisions.filter(r => r.result).length >= 2 && (
+            <Card accent="green" title="Marka Karşılaştırması" badge="★">
+              <p style={{ fontSize:12, color:'var(--muted)', marginBottom:12 }}>
+                Aynı bina için farklı marka kombinasyonlarının maliyet karşılaştırması.
+              </p>
+              <div className="rtw">
+                <table style={{ minWidth:480 }}>
+                  <thead>
+                    <tr>
+                      <th>Kalem</th>
+                      {revisions.filter(r => r.result).map(r => (
+                        <th key={r.id} style={{ textAlign:'right', color: r.id === activeRevId ? 'var(--acc)' : undefined }}>
+                          {r.name}
+                          {r.id === activeRevId && <span style={{ fontSize:10, marginLeft:4 }}>●</span>}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { label:'Toplam Boru (m)',    key: r => TR(r.totalPipe, 0) },
+                      { label:'Toplam Daire',        key: r => TI(r.totalFlats) },
+                      { label:'KDV\'siz Tutar (₺)', key: r => TR(r.grandNet, 0), bold:true },
+                      { label:'KDV (%20)',           key: r => TR(r.kdvAmt,   0) },
+                      { label:'Genel Toplam (₺)',    key: r => TR(r.grandTotal, 0), bold:true, accent:true },
+                    ].map(row => {
+                      const calcdRevs = revisions.filter(r => r.result);
+                      const minVal = row.accent
+                        ? Math.min(...calcdRevs.map(r => r.result.grandTotal))
+                        : null;
+                      return (
+                        <tr key={row.label} style={row.bold ? { fontWeight:700 } : {}}>
+                          <td style={{ fontSize:12 }}>{row.label}</td>
+                          {calcdRevs.map(r => {
+                            const isMin = row.accent && r.result.grandTotal === minVal;
+                            return (
+                              <td key={r.id} style={{
+                                textAlign:'right', fontFamily:'var(--mono)',
+                                color: isMin ? 'var(--green)' : row.accent ? 'var(--acc)' : undefined,
+                                fontWeight: (row.bold || isMin) ? 700 : undefined,
+                              }}>
+                                {row.key(r.result)}
+                                {isMin && <span style={{ marginLeft:4, fontSize:10 }}>✓ En düşük</span>}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                    {/* Fark satırı — ilk revizyon baz */}
+                    {(() => {
+                      const calcdRevs = revisions.filter(r => r.result);
+                      if (calcdRevs.length < 2) return null;
+                      const base = calcdRevs[0].result.grandTotal;
+                      return (
+                        <tr style={{ background:'var(--bg)', fontWeight:600 }}>
+                          <td style={{ fontSize:11, color:'var(--muted)' }}>Fark ({calcdRevs[0].name} baz)</td>
+                          {calcdRevs.map((r, i) => {
+                            const diff = r.result.grandTotal - base;
+                            return (
+                              <td key={r.id} style={{ textAlign:'right', fontFamily:'var(--mono)', color: i === 0 ? 'var(--muted)' : diff < 0 ? 'var(--green)' : diff > 0 ? 'var(--hot)' : 'var(--muted)' }}>
+                                {i === 0 ? '—' : (diff >= 0 ? '+' : '') + TR(diff, 0) + ' ₺'}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })()}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
           )}
         </>
       )}

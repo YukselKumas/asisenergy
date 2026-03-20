@@ -120,6 +120,10 @@ export const useCalculationStore = create((set, get) => ({
   isDirty:    false,   // Kaydedilmemiş değişiklik var mı?
   isSaving:   false,
 
+  // Revizyonlar — aynı bina, farklı marka kombinasyonları
+  revisions:    [],    // [{id, name, createdAt, brands, priceOverride, result}]
+  activeRevId:  null,  // Aktif revizyon UUID'si
+
   // ── Config güncelleme ─────────────────────────────────────────────
 
   /** Tek veya birden fazla config alanını güncelle */
@@ -196,21 +200,122 @@ export const useCalculationStore = create((set, get) => ({
 
   /** Yeni hesaplama — state'i sıfırla */
   newCalculation: () => set({
-    config:     { ...DEFAULT_CONFIG },
-    result:     null,
-    projectId:  null,
-    projectName:'',
-    isDirty:    false,
+    config:      { ...DEFAULT_CONFIG },
+    result:      null,
+    projectId:   null,
+    projectName: '',
+    isDirty:     false,
+    revisions:   [],
+    activeRevId: null,
   }),
 
   /** Kaydedilmiş projeyi yükle */
   loadProject: (project) => set({
-    config:     { ...DEFAULT_CONFIG, ...project.config },
-    result:     project.result || null,
-    projectId:  project.id,
-    projectName:project.name,
-    isDirty:    false,
+    config:      { ...DEFAULT_CONFIG, ...project.config },
+    result:      project.result || null,
+    projectId:   project.id,
+    projectName: project.name,
+    isDirty:     false,
+    revisions:   project.revisions || [],
+    activeRevId: null,
   }),
+
+  // ── Revizyon işlemleri ────────────────────────────────────────────
+
+  /**
+   * Mevcut config+result durumunu adlandırılmış bir revizyon olarak kaydet.
+   * Aktif revizyon varsa günceller, yoksa yenisini ekler.
+   */
+  saveAsRevision: (name) => {
+    const { config, result, revisions, activeRevId } = get();
+    const id = activeRevId || `rev_${Date.now()}`;
+    const rev = {
+      id,
+      name: name || 'Revizyon',
+      createdAt: new Date().toISOString(),
+      brands: {
+        markaPpr:     config.markaPpr,
+        markaPirince: config.markaPirince,
+        markaBd:      config.markaBd,
+        markaFiltre:  config.markaFiltre,
+      },
+      priceOverride: { ...(config.priceOverride || {}) },
+      result,
+    };
+    set(state => ({
+      revisions:   activeRevId
+        ? state.revisions.map(r => r.id === id ? rev : r)
+        : [...state.revisions, rev],
+      activeRevId: id,
+      isDirty:     true,
+    }));
+    return rev;
+  },
+
+  /**
+   * Mevcut revizyonu klonla — aynı teknik config, farklı markalar.
+   * Yeni revizyona geçer; marka fiyatları caller tarafından yüklenmelidir.
+   */
+  cloneRevision: (name, newBrands) => {
+    const id = `rev_${Date.now()}`;
+    const rev = {
+      id,
+      name,
+      createdAt: new Date().toISOString(),
+      brands:        newBrands,
+      priceOverride: {},
+      result:        null,
+    };
+    set(state => ({
+      config:      { ...state.config, ...newBrands, priceOverride: {} },
+      result:      null,
+      revisions:   [...state.revisions, rev],
+      activeRevId: id,
+      isDirty:     true,
+    }));
+    return id;
+  },
+
+  /** Mevcut revizyona geç — config'e markaları ve fiyat override'larını yükle */
+  switchRevision: (id) => {
+    const { revisions } = get();
+    const rev = revisions.find(r => r.id === id);
+    if (!rev) return;
+    set(state => ({
+      config:      { ...state.config, ...rev.brands, priceOverride: rev.priceOverride },
+      result:      rev.result,
+      activeRevId: id,
+      isDirty:     false,
+    }));
+  },
+
+  /** Aktif revizyon hesaplanınca sonucu ve güncel fiyatları güncelle */
+  updateActiveRevisionResult: (result) => {
+    const { activeRevId, config } = get();
+    if (!activeRevId) return;
+    set(state => ({
+      revisions: state.revisions.map(r => r.id === activeRevId ? {
+        ...r,
+        brands: {
+          markaPpr:     config.markaPpr,
+          markaPirince: config.markaPirince,
+          markaBd:      config.markaBd,
+          markaFiltre:  config.markaFiltre,
+        },
+        priceOverride: { ...(config.priceOverride || {}) },
+        result,
+      } : r),
+    }));
+  },
+
+  /** Revizyonu sil */
+  deleteRevision: (id) => {
+    set(state => ({
+      revisions:   state.revisions.filter(r => r.id !== id),
+      activeRevId: state.activeRevId === id ? null : state.activeRevId,
+      isDirty:     true,
+    }));
+  },
 
   // ── Supabase kayıt işlemleri ──────────────────────────────────────
 
@@ -219,12 +324,14 @@ export const useCalculationStore = create((set, get) => ({
     set({ isSaving: true });
     const { config, result, projectId } = get();
 
+    const { revisions } = get();
     const payload = {
       name:        name || get().projectName || 'İsimsiz Proje',
       description: description || null,
       created_by:  userId,
       config,
       result,
+      revisions,
       status:      result ? 'completed' : 'draft',
       updated_at:  new Date().toISOString(),
     };
