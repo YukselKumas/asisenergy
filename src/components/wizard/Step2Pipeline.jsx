@@ -1,5 +1,5 @@
 // ── Step 2 — Boru Güzergahı ───────────────────────────────────────────
-// Yatay ana hat, dikey kolon (çok sonlu şaft), branşman ve şaft başı vanalar.
+// Yatay ana hat, dikey kolon (çok zonlu şaft), branşman ve şaft başı vanalar.
 
 import { useCalculationStore } from '../../store/calculationStore.js';
 import { Card }         from '../ui/Card.jsx';
@@ -19,29 +19,31 @@ export function Step2Pipeline({ goStep }) {
   function upd(key, val)  { setConfig({ [key]: val }); }
   function updN(key, val) { setConfig({ [key]: isNaN(parseFloat(val)) ? 0 : parseFloat(val) }); }
 
-  function updSon(i, key, val) {
-    const newSons = c.sons.map((s, idx) => idx === i ? { ...s, [key]: val } : s);
-    setConfig({ sons: newSons });
+  function updZone(i, key, val) {
+    const newZones = c.zones.map((z, idx) => idx === i ? { ...z, [key]: val } : z);
+    setConfig({ zones: newZones });
   }
 
-  function changeSonCount(count) {
-    const cur  = c.sons || [];
+  function changeZoneCount(count) {
+    const cur  = c.zones || [];
     const def  = { from:1, to:4, startDiam:'q63', minDiam:'q25', bdAktif:'evet', bdDiam:'34', bdTo:4 };
     const next = Array.from({ length: count }, (_, i) => cur[i] || { ...def, from: i*5+1, to: (i+1)*5 });
     if (count === 1) {
       next[0] = { ...next[0], to: c.floor || next[0].to, bdTo: c.floor || next[0].bdTo };
     }
-    setConfig({ vertSonCount: count, sons: next });
+    setConfig({ vertZoneCount: count, zones: next });
   }
 
-  function sonPreview(son) {
-    const fl = Math.max(0, son.to - son.from + 1);
+  function zonePreview(zone) {
+    // Boru şaft tabanından (firstFloor) zone bitiş katına kadar uzanır
+    const shaftStart = c.firstFloor || 1;
+    const fl = Math.max(0, zone.to - shaftStart + 1);
     if (fl <= 0) return '⚠ Geçersiz kat aralığı';
-    const segs = calcVertSegments(fl, c.floorH || 4, c.vertStep || 4, son.startDiam, son.minDiam);
-    return segs.map(s => `${DIAM_LABEL[s.diam]}: ${son.from + s.katFrom - 1}–${son.from + s.katTo - 1}. kat (${s.m.toFixed(1)} m/şaft)`).join(' | ');
+    const segs = calcVertSegments(fl, c.floorH || 4, c.vertStep || 4, zone.startDiam, zone.minDiam);
+    return segs.map(s => `${DIAM_LABEL[s.diam]}: ${shaftStart + s.katFrom - 1}–${shaftStart + s.katTo - 1}. kat (${s.m.toFixed(1)} m/şaft)`).join(' | ');
   }
 
-  const SON_ACCENTS = ['var(--acc)', 'var(--hot)', 'var(--cold)'];
+  const ZONE_ACCENTS = ['var(--acc)', 'var(--hot)', 'var(--cold)'];
 
   return (
     <div>
@@ -147,13 +149,13 @@ export function Step2Pipeline({ goStep }) {
       </Card>
 
       {/* Dikey Kolon */}
-      <Card accent="acc" title="Dikey Kolon — Çok Sonlu Şaft Sistemi" badge="B">
+      <Card accent="acc" title="Dikey Kolon — Çok Zonlu Şaft Sistemi" badge="B">
         <div className="g g3" style={{ marginBottom:16 }}>
-          <Field label="Son Adedi (şaft başına)">
-            <GlassSelect value={c.vertSonCount} onChange={e => changeSonCount(parseInt(e.target.value))}>
-              <option value={1}>1 Son (tek kolon)</option>
-              <option value={2}>2 Son</option>
-              <option value={3}>3 Son</option>
+          <Field label="Zone Adedi (şaft başına)">
+            <GlassSelect value={c.vertZoneCount} onChange={e => changeZoneCount(parseInt(e.target.value))}>
+              <option value={1}>1 Zone (tek kolon)</option>
+              <option value={2}>2 Zone</option>
+              <option value={3}>3 Zone</option>
             </GlassSelect>
           </Field>
           <Field label="Kaç Katta Bir Çap Küçülür?">
@@ -165,31 +167,31 @@ export function Step2Pipeline({ goStep }) {
           </Field>
         </div>
 
-        {(c.sons || []).slice(0, c.vertSonCount).map((son, i) => (
+        {(c.zones || []).slice(0, c.vertZoneCount).map((zone, i) => (
           <div key={i} style={{
             marginBottom:12, padding:14,
             background:'var(--bg)', border:'1px solid var(--border)',
-            borderLeft:`3px solid ${SON_ACCENTS[i]}`, borderRadius:'var(--r)',
+            borderLeft:`3px solid ${ZONE_ACCENTS[i]}`, borderRadius:'var(--r)',
           }}>
-            <div style={{ fontSize:11, fontWeight:800, letterSpacing:'.5px', textTransform:'uppercase', color:SON_ACCENTS[i], marginBottom:12 }}>
-              {i+1}. Son
+            <div style={{ fontSize:11, fontWeight:800, letterSpacing:'.5px', textTransform:'uppercase', color:ZONE_ACCENTS[i], marginBottom:12 }}>
+              {i+1}. Zone
             </div>
             <div className="g g4">
-              <Field label="Başlangıç Katı">
-                <input type="number" value={son.from} min="1" style={{ fontFamily:'var(--mono)', fontWeight:700 }}
-                  onChange={e => updSon(i, 'from', parseInt(e.target.value))} />
+              <Field label="Servis Başlangıç Katı" hint="Bu zone'un beslediği ilk kat">
+                <input type="number" value={zone.from} min="1" style={{ fontFamily:'var(--mono)', fontWeight:700 }}
+                  onChange={e => updZone(i, 'from', parseInt(e.target.value))} />
               </Field>
-              <Field label="Bitiş Katı">
-                <input type="number" value={son.to} min="1" style={{ fontFamily:'var(--mono)', fontWeight:700 }}
-                  onChange={e => updSon(i, 'to', parseInt(e.target.value))} />
+              <Field label="Servis Bitiş Katı" hint="Bu zone'un beslediği son kat (boru buraya kadar çekilir)">
+                <input type="number" value={zone.to} min="1" style={{ fontFamily:'var(--mono)', fontWeight:700 }}
+                  onChange={e => updZone(i, 'to', parseInt(e.target.value))} />
               </Field>
               <Field label="Başlangıç Çapı">
-                <GlassSelect value={son.startDiam} onChange={e => updSon(i, 'startDiam', e.target.value)}>
+                <GlassSelect value={zone.startDiam} onChange={e => updZone(i, 'startDiam', e.target.value)}>
                   {DIAM_OPTS_VERT.map(d=><option key={d} value={d}>{DIAM_LABEL[d]}</option>)}
                 </GlassSelect>
               </Field>
               <Field label="Minimum Çap">
-                <GlassSelect value={son.minDiam} onChange={e => updSon(i, 'minDiam', e.target.value)}>
+                <GlassSelect value={zone.minDiam} onChange={e => updZone(i, 'minDiam', e.target.value)}>
                   {DIAM_OPTS_VERT.map(d=><option key={d} value={d}>{DIAM_LABEL[d]}</option>)}
                 </GlassSelect>
               </Field>
@@ -197,21 +199,21 @@ export function Step2Pipeline({ goStep }) {
             {/* BD satırı */}
             <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', marginTop:10, padding:'8px 12px', background:'var(--white)', border:'1px solid var(--border2)', borderRadius:'var(--r3)' }}>
               <span style={{ fontSize:11, fontWeight:700, color:'var(--cold)', textTransform:'uppercase' }}>Basınç Düşürücü</span>
-              <GlassSelect value={son.bdAktif} onChange={e => updSon(i,'bdAktif',e.target.value)} style={{ flex:'0 0 120px' }}>
+              <GlassSelect value={zone.bdAktif} onChange={e => updZone(i,'bdAktif',e.target.value)} style={{ flex:'0 0 120px' }}>
                 <option value="evet">Var</option>
                 <option value="hayir">Yok</option>
               </GlassSelect>
-              <GlassSelect value={son.bdDiam} onChange={e => updSon(i,'bdDiam',e.target.value)} style={{ flex:'0 0 150px' }}>
+              <GlassSelect value={zone.bdDiam} onChange={e => updZone(i,'bdDiam',e.target.value)} style={{ flex:'0 0 150px' }}>
                 <option value="34">¾" (DN20)</option>
                 <option value="1">1" (DN25)</option>
                 <option value="114">1¼" (DN32)</option>
               </GlassSelect>
               <span style={{ fontSize:11, color:'var(--muted)' }}>BD bitiş katı:</span>
-              <input type="number" value={son.bdTo} min="1" style={{ width:60, border:'1px solid var(--border2)', borderRadius:999, padding:'4px 8px', fontSize:13, fontFamily:'var(--mono)', fontWeight:700, outline:'none', textAlign:'center', background:'rgba(255,255,255,0.85)' }}
-                onChange={e => updSon(i,'bdTo',parseInt(e.target.value))} />
+              <input type="number" value={zone.bdTo} min="1" style={{ width:60, border:'1px solid var(--border2)', borderRadius:999, padding:'4px 8px', fontSize:13, fontFamily:'var(--mono)', fontWeight:700, outline:'none', textAlign:'center', background:'rgba(255,255,255,0.85)' }}
+                onChange={e => updZone(i,'bdTo',parseInt(e.target.value))} />
             </div>
             <div style={{ marginTop:8, fontSize:11, color:'var(--muted)', fontFamily:'var(--mono)' }}>
-              {sonPreview(son)}
+              {zonePreview(zone)}
             </div>
           </div>
         ))}
