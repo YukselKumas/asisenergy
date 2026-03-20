@@ -122,7 +122,6 @@ export const useCalculationStore = create((set, get) => ({
 
   // Revizyonlar — aynı bina, farklı marka kombinasyonları
   revisions:    [],    // [{id, name, createdAt, brands, priceOverride, result}]
-  activeRevId:  null,  // Aktif revizyon UUID'si
 
   // ── Config güncelleme ─────────────────────────────────────────────
 
@@ -206,7 +205,6 @@ export const useCalculationStore = create((set, get) => ({
     projectName: '',
     isDirty:     false,
     revisions:   [],
-    activeRevId: null,
   }),
 
   /** Kaydedilmiş projeyi yükle */
@@ -217,103 +215,28 @@ export const useCalculationStore = create((set, get) => ({
     projectName: project.name,
     isDirty:     false,
     revisions:   project.revisions || [],
-    activeRevId: null,
   }),
 
   // ── Revizyon işlemleri ────────────────────────────────────────────
+  // Revizyon = aynı bina teknik config + farklı marka → farklı fiyat teklifi.
+  // Proje kaydedildikten sonra Step 6 üzerinden eklenir; wizard'ı geçmeye gerek yok.
 
   /**
-   * Mevcut config+result durumunu adlandırılmış bir revizyon olarak kaydet.
-   * Aktif revizyon varsa günceller, yoksa yenisini ekler.
+   * Yeni revizyon ekle — {name, brands, priceOverride, result} ile çağırılır.
+   * Mevcut ana hesap değişmez; karşılaştırma tablosuna eklenir.
    */
-  saveAsRevision: (name) => {
-    const { config, result, revisions, activeRevId } = get();
-    const id = activeRevId || `rev_${Date.now()}`;
-    const rev = {
-      id,
-      name: name || 'Revizyon',
-      createdAt: new Date().toISOString(),
-      brands: {
-        markaPpr:     config.markaPpr,
-        markaPirince: config.markaPirince,
-        markaBd:      config.markaBd,
-        markaFiltre:  config.markaFiltre,
-      },
-      priceOverride: { ...(config.priceOverride || {}) },
-      result,
-    };
+  addRevision: (rev) => {
     set(state => ({
-      revisions:   activeRevId
-        ? state.revisions.map(r => r.id === id ? rev : r)
-        : [...state.revisions, rev],
-      activeRevId: id,
-      isDirty:     true,
-    }));
-    return rev;
-  },
-
-  /**
-   * Mevcut revizyonu klonla — aynı teknik config, farklı markalar.
-   * Yeni revizyona geçer; marka fiyatları caller tarafından yüklenmelidir.
-   */
-  cloneRevision: (name, newBrands) => {
-    const id = `rev_${Date.now()}`;
-    const rev = {
-      id,
-      name,
-      createdAt: new Date().toISOString(),
-      brands:        newBrands,
-      priceOverride: {},
-      result:        null,
-    };
-    set(state => ({
-      config:      { ...state.config, ...newBrands, priceOverride: {} },
-      result:      null,
-      revisions:   [...state.revisions, rev],
-      activeRevId: id,
-      isDirty:     true,
-    }));
-    return id;
-  },
-
-  /** Mevcut revizyona geç — config'e markaları ve fiyat override'larını yükle */
-  switchRevision: (id) => {
-    const { revisions } = get();
-    const rev = revisions.find(r => r.id === id);
-    if (!rev) return;
-    set(state => ({
-      config:      { ...state.config, ...rev.brands, priceOverride: rev.priceOverride },
-      result:      rev.result,
-      activeRevId: id,
-      isDirty:     false,
-    }));
-  },
-
-  /** Aktif revizyon hesaplanınca sonucu ve güncel fiyatları güncelle */
-  updateActiveRevisionResult: (result) => {
-    const { activeRevId, config } = get();
-    if (!activeRevId) return;
-    set(state => ({
-      revisions: state.revisions.map(r => r.id === activeRevId ? {
-        ...r,
-        brands: {
-          markaPpr:     config.markaPpr,
-          markaPirince: config.markaPirince,
-          markaBd:      config.markaBd,
-          markaFiltre:  config.markaFiltre,
-        },
-        priceOverride: { ...(config.priceOverride || {}) },
-        result,
-      } : r),
+      revisions: [...state.revisions, { ...rev, id: `rev_${Date.now()}`, createdAt: new Date().toISOString() }],
+      isDirty:   true,
     }));
   },
 
   /** Revizyonu sil */
   deleteRevision: (id) => {
     set(state => ({
-      revisions:   state.revisions.filter(r => r.id !== id),
-      activeRevId: state.activeRevId === id ? null : state.activeRevId,
-      isDirty:     true,
+      revisions: state.revisions.filter(r => r.id !== id),
+      isDirty:   true,
     }));
   },
 
