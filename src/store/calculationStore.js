@@ -98,9 +98,12 @@ export const DEFAULT_CONFIG = {
 
   // Adım 4 — Katsayılar
   katsayilar: {
-    h75:1.0, h63:1.5, h50:1.5, h40:2.0, h32:2.0, h25:2.0,
-    v75:0.5, v63:0.5, v50:0.8, v40:1.0, v32:1.0, v25:1.2,
-    kTee:3, kItee:2, kRed:3, kCous:3,
+    // Dirsek katsayıları (adet / 10m) — çap bazında
+    h110:0.5, h90:0.8, h75:1.0, h63:1.5, h50:1.5, h40:2.0, h32:2.0, h25:2.0,
+    v110:0.3, v90:0.5, v75:0.5, v63:0.5, v50:0.8, v40:1.0, v32:1.0, v25:1.2,
+    // Şaft başı te katsayıları (adet / şaft × hat)
+    // Manşon ve redüksiyon artık fizik tabanlı hesaplanıyor (4m/adet, çap geçişi)
+    kTee:3, kItee:2,
   },
 
   // Adım 5 — Fiyat geçersizlemeleri
