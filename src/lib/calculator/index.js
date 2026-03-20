@@ -9,7 +9,7 @@
 import { DIAM_ORDER } from './constants.js';
 import { calcAllSegments }                                    from './vertical.js';
 import { emptyPipeMap, addHorizontalPipes, addVerticalPipes, addBranchPipes } from './pipes.js';
-import { calcElbows, calcShaftFittings, applyFittingsToQty } from './fittings.js';
+import { calcElbows, calcShaftFittings, applyFittingsToQty, calcCouplings, calcReductions } from './fittings.js';
 import { processKolektorRows }                               from './kollector.js';
 import { pirVanaId }                                         from './kollector.js';
 import { pprVanaId, applyHidroforToQty, applyBoylerToQty, applyBdToQty, applyFixedMechToQty } from './mechanical.js';
@@ -108,10 +108,32 @@ export function calculate(config, priceOverride = {}) {
 
   // ── 6. Şaft başı ek parçalar ───────────────────────────────────────
   const hatSayFittings = (hasHot ? 1 : 0) + (hasCold ? 1 : 0);
-  const { teeTotal, iteeTotal, redTotal, couTotal } = calcShaftFittings(
-    shaft, hatSayFittings, katsayilar, totalFlats
-  );
-  applyFittingsToQty(QTY, teeTotal, iteeTotal, redTotal, couTotal);
+  const { teeTotal, iteeTotal } = calcShaftFittings(shaft, hatSayFittings, katsayilar);
+  applyFittingsToQty(QTY, teeTotal, iteeTotal);
+
+  // ── 6a. Manşon — fizik tabanlı (her 4m boru = 1 manşon) ──────────
+  const couplings = calcCouplings(pipe);
+  Object.entries(couplings).forEach(([mId, qty]) => {
+    if (QTY[mId] !== undefined) QTY[mId] = (QTY[mId] || 0) + qty;
+    else QTY[mId] = qty; // PRICES'ta olmayan çap (gelecekte eklenecek)
+  });
+
+  // ── 6b. Redüksiyon — fizik tabanlı (çap geçişi = 1 redüksiyon) ───
+  // Yatay hat çap geçişlerini topla
+  const hyTrans = [];
+  if (hasHot) {
+    if (hyHotD2 && hyHotL2 > 0) hyTrans.push([hyHotStart, hyHotD2]);
+    if (hyHotD3 && hyHotL3 > 0) hyTrans.push([hyHotD2 || hyHotStart, hyHotD3]);
+  }
+  if (hasCold) {
+    if (hyColdD2 && hyColdL2 > 0) hyTrans.push([hyColdStart, hyColdD2]);
+    if (hyColdD3 && hyColdL3 > 0) hyTrans.push([hyColdD2 || hyColdStart, hyColdD3]);
+  }
+  const reductions = calcReductions(allSegs, shaft, hatSayFittings, hyTrans);
+  Object.entries(reductions).forEach(([rId, qty]) => {
+    if (QTY[rId] !== undefined) QTY[rId] = (QTY[rId] || 0) + qty;
+    else QTY[rId] = qty;
+  });
 
   // ── 7. Daire sayaç grubu ──────────────────────────────────────────
   const sayacTotal  = totalFlats * ((hasHot ? dHotmeter : 0) + (hasCold ? dColdmeter : 0));

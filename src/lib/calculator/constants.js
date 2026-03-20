@@ -90,6 +90,10 @@ export const PRICES = [
   {id:'t50', cat:'baglanti', n:'50MM TE PP-R',                  u:'adet', list:54.42,  disc:0},
   {id:'t40', cat:'baglanti', n:'40MM TE PP-R',                  u:'adet', list:34.67,  disc:0},
   /* Redüksiyon */
+  {id:'r11090',cat:'baglanti',n:'110×90 REDÜKSİYON PP-R',        u:'adet', list:312.00, disc:0},
+  {id:'r9075', cat:'baglanti',n:'90×75 REDÜKSİYON PP-R',         u:'adet', list:248.00, disc:0},
+  {id:'r9063', cat:'baglanti',n:'90×63 REDÜKSİYON PP-R',         u:'adet', list:198.00, disc:0},
+  {id:'r9050', cat:'baglanti',n:'90×50 REDÜKSİYON PP-R',         u:'adet', list:172.00, disc:0},
   {id:'r7563',cat:'baglanti',n:'75×63 REDÜKSİYON PP-R',        u:'adet', list:113.17, disc:0},
   {id:'r7550',cat:'baglanti',n:'75×50 REDÜKSİYON PP-R',        u:'adet', list:90.04,  disc:0},
   {id:'r7540',cat:'baglanti',n:'75×40 REDÜKSİYON PP-R',        u:'adet', list:186.01, disc:0},
@@ -97,6 +101,7 @@ export const PRICES = [
   {id:'r5040',cat:'baglanti',n:'50×40 REDÜKSİYON PP-R',        u:'adet', list:56.29,  disc:0},
   {id:'r4032',cat:'baglanti',n:'40×32 REDÜKSİYON PP-R',        u:'adet', list:11.24,  disc:0},
   {id:'r3225',cat:'baglanti',n:'32×25 REDÜKSİYON PP-R',        u:'adet', list:11.48,  disc:0},
+  {id:'r2520',cat:'baglanti',n:'25×20 REDÜKSİYON PP-R',        u:'adet', list:8.50,   disc:0},
   /* Manşon */
   {id:'m110',cat:'baglanti', n:'110MM MANŞON PP-R',             u:'adet', list:319.18, disc:0},
   {id:'m90', cat:'baglanti', n:'90MM MANŞON PP-R',              u:'adet', list:193.88, disc:0},
@@ -104,7 +109,9 @@ export const PRICES = [
   {id:'m63', cat:'baglanti', n:'63MM MANŞON PP-R',              u:'adet', list:59.20,  disc:0},
   {id:'m50', cat:'baglanti', n:'50MM MANŞON PP-R',              u:'adet', list:24.54,  disc:0},
   {id:'m40', cat:'baglanti', n:'40MM MANŞON PP-R',              u:'adet', list:14.71,  disc:0},
+  {id:'m32', cat:'baglanti', n:'32MM MANŞON PP-R',              u:'adet', list:6.80,   disc:0},
   {id:'m25', cat:'baglanti', n:'25MM MANŞON PP-R',              u:'adet', list:3.41,   disc:0},
+  {id:'m20', cat:'baglanti', n:'20MM MANŞON PP-R',              u:'adet', list:2.60,   disc:0},
   /* Kapama Başlığı (Kep) */
   {id:'kep110',cat:'baglanti',n:'110MM KAPAMA BAŞLIĞI PP-R',    u:'adet', list:0,      disc:0},
   {id:'kep90', cat:'baglanti',n:'90MM KAPAMA BAŞLIĞI PP-R',     u:'adet', list:0,      disc:0},

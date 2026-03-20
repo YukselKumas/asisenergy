@@ -11,7 +11,7 @@ import { DIAM_LABEL, DIAM_ORDER } from '../../lib/calculator/constants.js';
 import { calcVertSegments } from '../../lib/calculator/vertical.js';
 import { showToast } from '../ui/Toast.jsx';
 
-const DIAM_OPTS_VERT = ['q20','q25','q32','q40','q50','q63','q75','q90','q110'];
+const DIAM_OPTS_VERT = ['q20','q25','q32','q40','q50','q63','q75','q90','q110','q125','q140','q160','q180','q200','q225','q250'];
 
 export function Step2Pipeline({ goStep }) {
   const { config, setConfig } = useCalculationStore();

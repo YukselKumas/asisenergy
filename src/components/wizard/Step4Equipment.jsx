@@ -6,8 +6,8 @@ import { Card }   from '../ui/Card.jsx';
 import { Field }  from '../ui/Field.jsx';
 import { Button } from '../ui/Button.jsx';
 
-const H_DIMS = ['75','63','50','40','32','25'];
-const V_DIMS = ['75','63','50','40','32','25'];
+const H_DIMS = ['110','90','75','63','50','40','32','25'];
+const V_DIMS = ['110','90','75','63','50','40','32','25'];
 
 export function Step4Equipment({ goStep }) {
   const { config, setConfig } = useCalculationStore();
@@ -62,19 +62,16 @@ export function Step4Equipment({ goStep }) {
         <p style={{ fontSize:12, color:'var(--muted)', marginBottom:12 }}>
           <Button variant="default" style={{ padding:'3px 10px', fontSize:11 }} onClick={autoFill}>↺ Otomatik Doldur</Button>
         </p>
-        <div className="slbl" style={{ marginTop:0 }}>Şaft Başı (adet / şaft × hat sayısı)</div>
-        <div className="g g5">
+        <div className="al al-i" style={{ marginBottom:12, fontSize:11 }}>
+          ℹ Manşon ve redüksiyon artık fizik tabanlı hesaplanır: her 4 m'de 1 manşon, her çap düşüşünde 1 redüksiyon.
+        </div>
+        <div className="slbl" style={{ marginTop:0 }}>Şaft Başı Te (adet / şaft × hat sayısı)</div>
+        <div className="g g4">
           <Field label="Equal Te / şaft" hint={`→ ${(config.hasHot?1:0)+(config.hasCold?1:0)} hat × 2`}>
             <input type="number" min="0" value={k.kTee  ?? 3} onChange={e => updK('kTee',  e.target.value)} />
           </Field>
-          <Field label="İnegal Te / şaft" hint="Çap küçülme noktaları">
+          <Field label="İnegal Te / şaft" hint="Dal branşman noktaları">
             <input type="number" min="0" value={k.kItee ?? 2} onChange={e => updK('kItee', e.target.value)} />
-          </Field>
-          <Field label="Redüksiyon / şaft">
-            <input type="number" min="0" value={k.kRed  ?? 3} onChange={e => updK('kRed',  e.target.value)} />
-          </Field>
-          <Field label="Manşon / şaft">
-            <input type="number" min="0" value={k.kCous ?? 3} onChange={e => updK('kCous', e.target.value)} />
           </Field>
         </div>
       </Card>
