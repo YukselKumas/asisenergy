@@ -27,12 +27,17 @@ export function calcCost(QTY, override = {}, kdvRate = 0.20) {
   let grandNet = 0;
 
   // Fiyat listesindeki ürünler
+  const missingPrices = [];
   const lines = PRICES.map(item => {
     const qty = QTY[item.id] || 0;
     const net = netPrice(item, override);
-    const row = qty * net;
+    // Fiyat girilmemiş (null/undefined → NaN) ama miktar var → uyarı
+    const noprice = qty > 0 && (isNaN(net) || net === null || net === undefined);
+    const safeNet = noprice ? 0 : net;
+    const row = qty * safeNet;
     grandNet += row;
-    return { ...item, qty, net, row };
+    if (noprice) missingPrices.push(item.n);
+    return { ...item, qty, net: safeNet, row, ...(noprice ? { _noprice: true } : {}) };
   }).filter(i => i.qty > 0);
 
   // Fiyat listesinde olmayan dinamik ürünler (örn: özel inegal te kombinasyonları)
@@ -53,7 +58,7 @@ export function calcCost(QTY, override = {}, kdvRate = 0.20) {
   const kdvAmt     = grandNet * kdvRate;
   const grandTotal = grandNet + kdvAmt;
 
-  return { lines, grandNet, kdvAmt, grandTotal };
+  return { lines, grandNet, kdvAmt, grandTotal, missingPrices };
 }
 
 /**

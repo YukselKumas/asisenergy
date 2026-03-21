@@ -101,14 +101,15 @@ const CostTable = memo(function CostTable({ result, kdvRate }) {
                   const pct = Math.min(100, (it.row / result.grandNet) * 100 * 3.5).toFixed(0);
                   return (
                     <tr key={it.id}>
-                      <td style={{ fontSize:12 }}>
+                      <td style={{ fontSize:12, background: it._noprice ? 'rgba(245,158,11,0.07)' : undefined }}>
                         {it.n}
-                        {it._missing && <span style={{ color:'var(--warn)', fontSize:10, marginLeft:4 }}>⚠ fiyat listesine ekle</span>}
+                        {it._missing  && <span style={{ color:'var(--warn)', fontSize:10, marginLeft:4 }}>⚠ fiyat listesine ekle</span>}
+                        {it._noprice  && <span style={{ color:'var(--warn)', fontSize:10, marginLeft:4 }}>⚠ fiyat girilmemiş</span>}
                       </td>
                       <td style={{ fontFamily:'var(--mono)', color:'var(--muted)' }}>{it.u}</td>
                       <td style={{ textAlign:'right', fontFamily:'var(--mono)', color:'var(--acc)' }}>{TI(it.qty)}</td>
-                      <td style={{ textAlign:'right', fontFamily:'var(--mono)' }}>{it._missing ? '—' : TR(it.net)}</td>
-                      <td style={{ textAlign:'right', fontFamily:'var(--mono)' }}>{it._missing ? '—' : TR(it.row,0)}</td>
+                      <td style={{ textAlign:'right', fontFamily:'var(--mono)', color: it._noprice ? 'var(--warn)' : undefined }}>{(it._missing || it._noprice) ? '—' : TR(it.net)}</td>
+                      <td style={{ textAlign:'right', fontFamily:'var(--mono)', color: it._noprice ? 'var(--warn)' : undefined }}>{(it._missing || it._noprice) ? '—' : TR(it.row,0)}</td>
                       <td><div className="bbar"><div className="bfill" style={{ width:`${pct}%` }}></div></div></td>
                     </tr>
                   );
@@ -217,6 +218,15 @@ export function Step6Results({ goStep }) {
       {result && (
         <>
           <ResultKPIs res={result} conf={config} />
+
+          {/* Fiyatı girilmemiş kalemler uyarısı */}
+          {result.missingPrices?.length > 0 && (
+            <div className="al al-w" style={{ marginBottom:13 }}>
+              <strong>⚠ Fiyatı girilmemiş kalemler var — toplam eksik hesaplanıyor:</strong><br />
+              {result.missingPrices.map((n, i) => <span key={i}>• {n}<br /></span>)}
+              <div style={{ marginTop:6, fontSize:11 }}>Tanımlamalar &gt; Fiyat Listesi sayfasından fiyatları girin (0 girmek kabul edilir).</div>
+            </div>
+          )}
 
           {result.kolSummary?.length > 0 && (
             <div className="al al-ok" style={{ marginBottom:13 }}>
