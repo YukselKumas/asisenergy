@@ -113,15 +113,14 @@ export const DEFAULT_CONFIG = {
 
 export const useCalculationStore = create((set, get) => ({
   // ── State ──────────────────────────────────────────────────────────
-  config:     { ...DEFAULT_CONFIG },
-  result:     null,    // Son hesaplama çıktısı
-  projectId:  null,    // Kaydedilmiş proje UUID'si
-  projectName:'',      // Proje adı
-  isDirty:    false,   // Kaydedilmemiş değişiklik var mı?
-  isSaving:   false,
-
-  // Revizyonlar — aynı bina, farklı marka kombinasyonları
-  revisions:    [],    // [{id, name, createdAt, brands, priceOverride, result}]
+  config:          { ...DEFAULT_CONFIG },
+  result:          null,    // Son hesaplama çıktısı
+  projectId:       null,    // Kaydedilmiş proje UUID'si
+  projectName:     '',      // Proje adı
+  parentProjectId: null,    // Revizyon ise orijinal projenin ID'si
+  isDirty:         false,
+  isSaving:        false,
+  revisions:       [],      // (geçmiş uyumluluk için tutulur)
 
   // ── Config güncelleme ─────────────────────────────────────────────
 
@@ -199,22 +198,38 @@ export const useCalculationStore = create((set, get) => ({
 
   /** Yeni hesaplama — state'i sıfırla */
   newCalculation: () => set({
-    config:      { ...DEFAULT_CONFIG },
-    result:      null,
-    projectId:   null,
-    projectName: '',
-    isDirty:     false,
-    revisions:   [],
+    config:          { ...DEFAULT_CONFIG },
+    result:          null,
+    projectId:       null,
+    projectName:     '',
+    parentProjectId: null,
+    isDirty:         false,
+    revisions:       [],
   }),
 
-  /** Kaydedilmiş projeyi yükle */
+  /** Kaydedilmiş projeyi yükle (salt okunur görüntü için) */
   loadProject: (project) => set({
-    config:      { ...DEFAULT_CONFIG, ...project.config },
-    result:      project.result || null,
-    projectId:   project.id,
-    projectName: project.name,
-    isDirty:     false,
-    revisions:   project.revisions || [],
+    config:          { ...DEFAULT_CONFIG, ...project.config },
+    result:          project.result || null,
+    projectId:       project.id,
+    projectName:     project.name,
+    parentProjectId: null,
+    isDirty:         false,
+    revisions:       project.revisions || [],
+  }),
+
+  /**
+   * Mevcut bir projeyi temel alarak revizyon başlat.
+   * Config kopyalanır, yeni proje olarak kaydedilecek, parent referansı saklanır.
+   */
+  startRevision: (project) => set({
+    config:          { ...DEFAULT_CONFIG, ...project.config },
+    result:          null,
+    projectId:       null,
+    projectName:     `${project.name} — Revizyon`,
+    parentProjectId: project.id,
+    isDirty:         true,
+    revisions:       [],
   }),
 
   // ── Revizyon işlemleri ────────────────────────────────────────────
@@ -247,16 +262,17 @@ export const useCalculationStore = create((set, get) => ({
     set({ isSaving: true });
     const { config, result, projectId } = get();
 
-    const { revisions } = get();
+    const { revisions, parentProjectId } = get();
     const payload = {
-      name:        name || get().projectName || 'İsimsiz Proje',
-      description: description || null,
-      created_by:  userId,
+      name:              name || get().projectName || 'İsimsiz Proje',
+      description:       description || null,
+      created_by:        userId,
       config,
       result,
       revisions,
-      status:      result ? 'completed' : 'draft',
-      updated_at:  new Date().toISOString(),
+      parent_project_id: parentProjectId || null,
+      status:            result ? 'completed' : 'draft',
+      updated_at:        new Date().toISOString(),
     };
 
     let id = projectId;
@@ -275,7 +291,7 @@ export const useCalculationStore = create((set, get) => ({
       throw err;
     }
 
-    set({ projectId: id, projectName: payload.name, isDirty: false, isSaving: false });
+    set({ projectId: id, projectName: payload.name, parentProjectId: null, isDirty: false, isSaving: false });
     return id;
   },
 
