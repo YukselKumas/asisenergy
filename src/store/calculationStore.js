@@ -264,15 +264,16 @@ export const useCalculationStore = create((set, get) => ({
 
     const { revisions, parentProjectId } = get();
     const payload = {
-      name:              name || get().projectName || 'İsimsiz Proje',
-      description:       description || null,
-      created_by:        userId,
+      name:        name || get().projectName || 'İsimsiz Proje',
+      description: description || null,
+      created_by:  userId,
       config,
       result,
       revisions,
-      parent_project_id: parentProjectId || null,
-      status:            result ? 'completed' : 'draft',
-      updated_at:        new Date().toISOString(),
+      status:      result ? 'completed' : 'draft',
+      updated_at:  new Date().toISOString(),
+      // parent_project_id yalnızca revizyon modunda eklenir (kolon yoksa normal kayıt bozulmasın)
+      ...(parentProjectId ? { parent_project_id: parentProjectId } : {}),
     };
 
     let id = projectId;
