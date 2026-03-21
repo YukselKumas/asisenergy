@@ -244,8 +244,9 @@ function PriceListTab() {
 
 // ── Markalar Tab ──────────────────────────────────────────────────────
 function BrandsTab() {
-  const { brands, fetchBrands, addBrand, deleteBrand } = useDefinitionsStore();
-  const [form, setForm] = useState({ name:'', category:'ppr', description:'' });
+  const { brands, fetchBrands, addBrand, deleteBrand, seedDefaultBrands, loading, error } = useDefinitionsStore();
+  const [form,    setForm]    = useState({ name:'', category:'ppr', description:'' });
+  const [seeding, setSeeding] = useState(false);
 
   useEffect(() => { fetchBrands(); }, []);
 
@@ -255,7 +256,7 @@ function BrandsTab() {
       await addBrand(form);
       setForm({ name:'', category:'ppr', description:'' });
       showToast('Marka eklendi');
-    } catch (err) { showToast(err.message); }
+    } catch (err) { showToast('Hata: ' + err.message); }
   }
 
   async function handleDelete(id) {
@@ -264,8 +265,34 @@ function BrandsTab() {
     showToast('Marka silindi');
   }
 
+  async function handleSeedDefaults() {
+    setSeeding(true);
+    try {
+      await seedDefaultBrands();
+      showToast('✓ Varsayılan markalar yüklendi');
+    } catch (err) { showToast('Hata: ' + err.message); }
+    finally { setSeeding(false); }
+  }
+
   return (
     <div>
+      {error && (
+        <div className="al al-w" style={{ marginBottom:14 }}>
+          Marka verisi yüklenemedi: {error}
+        </div>
+      )}
+
+      {!loading && brands.length === 0 && !error && (
+        <div style={{ marginBottom:14, padding:'12px 16px', background:'rgba(59,130,246,0.07)', border:'1px solid var(--acc)', borderRadius:'var(--r)', display:'flex', alignItems:'center', gap:12 }}>
+          <div style={{ flex:1, fontSize:13, color:'var(--acc)', fontWeight:600 }}>
+            Henüz marka tanımlanmamış. Varsayılan markaları yükleyerek başlayabilirsiniz.
+          </div>
+          <Button variant="primary" onClick={handleSeedDefaults} disabled={seeding}>
+            {seeding ? 'Yükleniyor...' : '⬇ Varsayılan Markaları Yükle'}
+          </Button>
+        </div>
+      )}
+
       <Card accent="green" title="Yeni Marka Ekle" badge="+">
         <form onSubmit={handleAdd} style={{ display:'flex', gap:10, flexWrap:'wrap', alignItems:'flex-end' }}>
           <div className="field">
@@ -291,6 +318,14 @@ function BrandsTab() {
       </Card>
 
       <Card accent="acc" title="Marka Listesi">
+        {brands.length > 0 && (
+          <div style={{ marginBottom:10 }}>
+            <Button variant="default" style={{ fontSize:11, padding:'4px 12px' }}
+              onClick={handleSeedDefaults} disabled={seeding}>
+              {seeding ? 'Yükleniyor...' : '⬇ Varsayılan Markaları Yenile'}
+            </Button>
+          </div>
+        )}
         <table>
           <thead>
             <tr><th>Marka</th><th>Kategori</th><th>Açıklama</th><th></th></tr>
