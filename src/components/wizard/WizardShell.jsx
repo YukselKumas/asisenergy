@@ -1,7 +1,9 @@
 // ── WizardShell — 6 adımlı hesaplama sihirbazı çerçevesi ─────────────
-// Her adım bağımsız bir bileşen; bu bileşen adım takibini ve geçişleri yönetir.
+// isReadOnly=true iken doğrudan Sonuçlar adımına atlar (görüntüleme modu).
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useCalculationStore } from '../../store/calculationStore.js';
 import { Step1System }    from './Step1System.jsx';
 import { Step2Pipeline }  from './Step2Pipeline.jsx';
 import { Step3Floors }    from './Step3Floors.jsx';
@@ -19,12 +21,26 @@ const STEPS = [
 ];
 
 const PANELS = [Step1System, Step2Pipeline, Step3Floors, Step4Equipment, Step5Prices, Step6Results];
+const RESULT_STEP = 5;
 
 export function WizardShell() {
-  const [step, setStep] = useState(0);
-  const [maxStep, setMaxStep] = useState(0);
+  const isReadOnly  = useCalculationStore(s => s.isReadOnly);
+  const projectName = useCalculationStore(s => s.projectName);
+  const navigate    = useNavigate();
+
+  // Read-only modda direkt Sonuçlar adımına git
+  const [step,    setStep]    = useState(isReadOnly ? RESULT_STEP : 0);
+  const [maxStep, setMaxStep] = useState(isReadOnly ? RESULT_STEP : 0);
+
+  useEffect(() => {
+    if (isReadOnly) {
+      setStep(RESULT_STEP);
+      setMaxStep(RESULT_STEP);
+    }
+  }, [isReadOnly]);
 
   function goStep(idx) {
+    if (isReadOnly) return;  // read-only'de adım geçişi engelle
     setMaxStep(prev => Math.max(prev, idx));
     setStep(idx);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -34,22 +50,43 @@ export function WizardShell() {
 
   return (
     <div>
-      {/* Adım göstergesi */}
+      {/* ── Görüntüleme modu banner ── */}
+      {isReadOnly && (
+        <div style={{
+          marginBottom: 16, padding: '10px 16px',
+          background: 'rgba(245,158,11,0.09)', border: '1px solid var(--warn)',
+          borderRadius: 'var(--r)', display: 'flex', alignItems: 'center',
+          gap: 12, flexWrap: 'wrap',
+        }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--warn)', flex: 1 }}>
+            📄 Görüntüleme Modu — Bu proje kaydedilmiş ve değiştirilemez.
+            Değişiklik yapmak için "Revizyon Yap" kullanın.
+          </span>
+          <button
+            onClick={() => navigate('/gecmis')}
+            style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 999, padding: '5px 14px', fontSize: 12, cursor: 'pointer', fontWeight: 600 }}
+          >
+            ← Geçmiş
+          </button>
+        </div>
+      )}
+
+      {/* ── Adım sekmeleri — read-only'de sadece Sonuçlar erişilebilir ── */}
       <div style={{ display:'flex', gap:4, marginBottom:24, overflowX:'auto', paddingBottom:1 }}>
         {STEPS.map((s, i) => {
-          const unlocked = i <= maxStep;
+          const unlocked = isReadOnly ? (i === RESULT_STEP) : (i <= maxStep);
           const active   = i === step;
-          const done     = i < step;
+          const done     = !isReadOnly && i < step;
           return (
             <button
               key={i}
-              onClick={() => unlocked && setStep(i)}
+              onClick={() => unlocked && !isReadOnly && setStep(i)}
               disabled={!unlocked}
               style={{
                 flex:        1,
                 minWidth:    120,
-                cursor:      unlocked ? 'pointer' : 'not-allowed',
-                opacity:     unlocked ? 1 : 0.45,
+                cursor:      unlocked && !isReadOnly ? 'pointer' : 'not-allowed',
+                opacity:     unlocked ? 1 : 0.35,
                 background:  active ? 'var(--acc)' : done ? 'var(--green-bg)' : 'var(--white)',
                 border:      `1px solid ${active ? 'var(--acc)' : done ? 'var(--green-b)' : 'var(--border)'}`,
                 borderRadius:'var(--r2)',
@@ -64,7 +101,7 @@ export function WizardShell() {
                 display:'block', marginBottom:2, opacity:.65,
                 color: active ? '#fff' : done ? 'var(--green)' : 'var(--muted)',
               }}>
-                {unlocked && !active ? (done ? '✓ ' : '') : ''}Adım {i + 1}
+                {!isReadOnly && unlocked && !active && done ? '✓ ' : ''}Adım {i + 1}
               </span>
               <span style={{
                 fontSize:12, fontWeight:700, display:'block',
@@ -77,7 +114,7 @@ export function WizardShell() {
         })}
       </div>
 
-      {/* Aktif panel */}
+      {/* ── Aktif panel ── */}
       <Panel goStep={goStep} currentStep={step} />
     </div>
   );
