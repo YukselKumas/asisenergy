@@ -27,7 +27,7 @@ export const useDefinitionsStore = create((set, get) => ({
     set({ brands: data || [], loading: false });
   },
 
-  /** Varsayılan markaları DB'ye ekle (yoksa) */
+  /** Varsayılan markaları DB'ye ekle (yoksa) — constraint gerektirmez */
   seedDefaultBrands: async () => {
     const defaults = [
       { name:'Kalde',              category:'ppr',    description:'PP-R boru ve bağlantı parçaları' },
@@ -39,11 +39,22 @@ export const useDefinitionsStore = create((set, get) => ({
       { name:'Honeywell / Resideo',category:'bd',     description:'Daire başı basınç düşürücü' },
       { name:'Kalde',              category:'filter', description:'Filtre ve çekvalf' },
     ];
-    const { error } = await supabase.from('brands').upsert(
-      defaults.map(b => ({ ...b, is_active: true })),
-      { onConflict: 'name,category', ignoreDuplicates: false }
-    );
-    if (error) throw error;
+
+    // Mevcut markaları çek; sadece eksik olanları ekle
+    const { data: existing } = await supabase
+      .from('brands')
+      .select('name, category');
+
+    const existingSet = new Set((existing || []).map(b => `${b.name}|${b.category}`));
+    const toInsert = defaults
+      .filter(b => !existingSet.has(`${b.name}|${b.category}`))
+      .map(b => ({ ...b, is_active: true }));
+
+    if (toInsert.length > 0) {
+      const { error } = await supabase.from('brands').insert(toInsert);
+      if (error) throw error;
+    }
+
     await get().fetchBrands();
   },
 

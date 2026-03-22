@@ -1,6 +1,6 @@
 // ── HistoryPage — Kaydedilmiş hesaplamalar listesi ────────────────────
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase.js';
 import { useCalculationStore } from '../store/calculationStore.js';
@@ -8,6 +8,7 @@ import { useAuthStore }        from '../store/authStore.js';
 import { Button } from '../components/ui/Button.jsx';
 
 const TR  = (x, d=0) => new Intl.NumberFormat('tr-TR', { minimumFractionDigits:d, maximumFractionDigits:d }).format(x ?? 0);
+const withTimeout = (p, ms) => Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error('Bağlantı zaman aşımı')), ms))]);
 const PCT = (a, b)   => b ? `${(((a - b) / b) * 100).toFixed(1)}%` : '—';
 
 const STATUS_LABEL = {
@@ -124,6 +125,7 @@ export function HistoryPage() {
   const [projects,    setProjects]    = useState([]);
   const [search,      setSearch]      = useState('');
   const [loading,     setLoading]     = useState(true);
+  const [fetchError,  setFetchError]  = useState(null);
   const [expanded,    setExpanded]    = useState({});   // parentId → bool
   const [selected,    setSelected]    = useState([]);   // max 2 items for comparison
   const [compareOpen, setCompareOpen] = useState(false);
@@ -134,18 +136,24 @@ export function HistoryPage() {
 
   const admin = typeof isAdmin === 'function' ? isAdmin() : false;
 
-  useEffect(() => { fetchProjects(); }, []);
-
-  async function fetchProjects() {
+  const fetchProjects = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) console.error('Proje listesi yüklenemedi:', error.message);
-    if (data) setProjects(data);
-    setLoading(false);
-  }
+    setFetchError(null);
+    try {
+      const { data, error } = await withTimeout(
+        supabase.from('projects').select('*').order('created_at', { ascending: false }),
+        10000
+      );
+      if (error) throw error;
+      setProjects(data || []);
+    } catch (err) {
+      setFetchError(err.message || 'Projeler yüklenemedi');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchProjects(); }, [fetchProjects]);
 
   async function deleteProject(id) {
     if (!confirm('Bu projeyi silmek istediğinizden emin misiniz?')) return;
@@ -350,6 +358,11 @@ export function HistoryPage() {
       <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 'var(--r)', overflow: 'hidden', boxShadow: 'var(--sh)' }}>
         {loading ? (
           <div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)', fontSize: 12 }}>Yükleniyor...</div>
+        ) : fetchError ? (
+          <div style={{ padding: 32, textAlign: 'center' }}>
+            <div style={{ color: 'var(--red)', fontSize: 13, marginBottom: 10 }}>{fetchError}</div>
+            <button onClick={fetchProjects} style={{ background: 'var(--acc)', color: '#fff', border: 'none', borderRadius: 999, padding: '7px 18px', fontSize: 12, cursor: 'pointer', fontWeight: 700 }}>↻ Tekrar Dene</button>
+          </div>
         ) : filteredRoots.length === 0 ? (
           <div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
             {search ? `"${search}" ile eşleşen proje bulunamadı.` : 'Henüz proje yok.'}
