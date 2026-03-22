@@ -128,7 +128,7 @@ export function HistoryPage() {
   const [selected,    setSelected]    = useState([]);   // max 2 items for comparison
   const [compareOpen, setCompareOpen] = useState(false);
 
-  const { loadProject, startRevision } = useCalculationStore();
+  const { loadProject, editProject, startRevision } = useCalculationStore();
   const isAdmin = useAuthStore(s => s.isAdmin);
   const navigate = useNavigate();
 
@@ -288,7 +288,7 @@ export function HistoryPage() {
               </button>
               {admin && (
                 <button
-                  onClick={() => { loadProject(p); navigate(`/hesaplama/${p.id}`); }}
+                  onClick={() => { editProject(p); navigate(`/hesaplama/${p.id}`); }}
                   style={{ background: 'var(--warn-bg, #fff8e1)', color: 'var(--warn, #b45309)', border: '1px solid var(--warn-b, #fde68a)', borderRadius: 999, padding: '4px 10px', fontSize: 11, cursor: 'pointer', whiteSpace: 'nowrap' }}
                   title="Projeyi düzenle (Admin)"
                 >

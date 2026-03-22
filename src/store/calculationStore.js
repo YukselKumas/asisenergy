@@ -118,6 +118,7 @@ export const useCalculationStore = create((set, get) => ({
   projectId:       null,    // Kaydedilmiş proje UUID'si
   projectName:     '',      // Proje adı
   parentProjectId: null,    // Revizyon ise orijinal projenin ID'si
+  isReadOnly:      false,   // true = görüntüleme modu, kayıt/düzenleme engellendi
   isDirty:         false,
   isSaving:        false,
   revisions:       [],      // (geçmiş uyumluluk için tutulur)
@@ -203,17 +204,31 @@ export const useCalculationStore = create((set, get) => ({
     projectId:       null,
     projectName:     '',
     parentProjectId: null,
+    isReadOnly:      false,
     isDirty:         false,
     revisions:       [],
   }),
 
-  /** Kaydedilmiş projeyi yükle (salt okunur görüntü için) */
+  /** Kaydedilmiş projeyi yükle — SALT OKUNUR (sadece görüntüleme) */
   loadProject: (project) => set({
     config:          { ...DEFAULT_CONFIG, ...project.config },
     result:          project.result || null,
     projectId:       project.id,
     projectName:     project.name,
     parentProjectId: null,
+    isReadOnly:      true,   // Geçmiş'ten açılan proje değiştirilemez
+    isDirty:         false,
+    revisions:       project.revisions || [],
+  }),
+
+  /** Projeyi düzenleme modunda yükle — SADECE ADMİN */
+  editProject: (project) => set({
+    config:          { ...DEFAULT_CONFIG, ...project.config },
+    result:          project.result || null,
+    projectId:       project.id,
+    projectName:     project.name,
+    parentProjectId: null,
+    isReadOnly:      false,  // Admin düzenleme modu
     isDirty:         false,
     revisions:       project.revisions || [],
   }),
@@ -228,6 +243,7 @@ export const useCalculationStore = create((set, get) => ({
     projectId:       null,
     projectName:     `${project.name} — Revizyon`,
     parentProjectId: project.id,
+    isReadOnly:      false,  // Revizyon modunda düzenleme serbest
     isDirty:         true,
     revisions:       [],
   }),

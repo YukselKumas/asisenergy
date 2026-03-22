@@ -56,57 +56,94 @@ export function DefinitionsPage() {
 }
 
 // ── Fiyat Listesi Tab ─────────────────────────────────────────────────
+const withTimeout = (p, ms) => Promise.race([
+  p,
+  new Promise((_, rej) => setTimeout(() => rej(new Error(`Bağlantı zaman aşımı (${ms/1000}s)`)), ms)),
+]);
+
 function PriceListTab() {
-  const { brands, priceLists, fetchBrands, fetchPriceList, upsertPrices, seedBrandFromConstants, loading } = useDefinitionsStore();
+  const { brands, priceLists, fetchBrands, fetchPriceList, upsertPrices, seedBrandFromConstants } = useDefinitionsStore();
   const [selBrand,   setSelBrand]  = useState('');
-  const [selBrandCat, setSelBrandCat] = useState('');
   const [localPrices,setLocalP]    = useState({});
+  const [dirtyRows,  setDirtyRows] = useState(new Set());   // değişen product_id'ler
+  const [rowSaving,  setRowSaving] = useState({});           // {pid: bool}
+  const [allSaving,  setAllSaving] = useState(false);
   const [catFilter,  setCatFilter] = useState('Tümü');
-  const [saving,     setSaving]    = useState(false);
   const [seeding,    setSeeding]   = useState(false);
 
   useEffect(() => { fetchBrands(); }, []);
 
   useEffect(() => {
-    if (selBrand) fetchPriceList(selBrand);
+    if (selBrand) { setDirtyRows(new Set()); fetchPriceList(selBrand); }
   }, [selBrand]);
 
   useEffect(() => {
     const map = {};
-    priceLists.forEach(p => { map[p.product_id] = { list_price: p.list_price, discount_pct: p.discount_pct }; });
+    priceLists.forEach(p => { map[p.product_id] = { list_price: parseFloat(p.list_price) || 0, discount_pct: parseFloat(p.discount_pct) || 0 }; });
     setLocalP(map);
+    setDirtyRows(new Set());
   }, [priceLists]);
-
-  function handleBrandSelect(brandId) {
-    setSelBrand(brandId);
-    const brand = brands.find(b => b.id === brandId);
-    setSelBrandCat(brand?.category || '');
-  }
 
   function upd(productId, field, val) {
     setLocalP(prev => ({
       ...prev,
-      [productId]: { ...(prev[productId] || {}), [field]: parseFloat(val) || 0 },
+      [productId]: { ...(prev[productId] || {}), [field]: val },
     }));
+    setDirtyRows(prev => new Set([...prev, productId]));
   }
 
-  async function handleSave() {
+  function rowVal(pid, field, fallback) {
+    const v = localPrices[pid]?.[field];
+    return v !== undefined ? v : fallback;
+  }
+
+  /** Tek satır kaydet */
+  async function saveRow(productId) {
     if (!selBrand) return;
-    setSaving(true);
+    const p = PRICES.find(pr => pr.id === productId);
+    if (!p) return;
+    setRowSaving(prev => ({ ...prev, [productId]: true }));
     try {
-      const rows = PRICES.map(p => ({
-        product_id:   p.id,
+      const row = {
+        product_id:   productId,
         product_name: p.n,
         unit:         p.u,
-        list_price:   localPrices[p.id]?.list_price  ?? p.list,
-        discount_pct: localPrices[p.id]?.discount_pct ?? p.disc,
-      }));
-      await upsertPrices(selBrand, rows);
-      showToast('Fiyatlar kaydedildi');
+        list_price:   parseFloat(rowVal(productId, 'list_price', p.list)) || 0,
+        discount_pct: parseFloat(rowVal(productId, 'discount_pct', p.disc)) || 0,
+      };
+      await withTimeout(upsertPrices(selBrand, [row]), 12000);
+      setDirtyRows(prev => { const s = new Set(prev); s.delete(productId); return s; });
+      showToast('✓ Kaydedildi');
+    } catch (err) {
+      showToast('Hata: ' + err.message);
+    } finally {
+      setRowSaving(prev => ({ ...prev, [productId]: false }));
+    }
+  }
+
+  /** Tüm değişenleri kaydet */
+  async function saveAll() {
+    if (!selBrand || dirtyRows.size === 0) return;
+    setAllSaving(true);
+    try {
+      const rows = [...dirtyRows].map(productId => {
+        const p = PRICES.find(pr => pr.id === productId);
+        if (!p) return null;
+        return {
+          product_id:   productId,
+          product_name: p.n,
+          unit:         p.u,
+          list_price:   parseFloat(rowVal(productId, 'list_price', p.list)) || 0,
+          discount_pct: parseFloat(rowVal(productId, 'discount_pct', p.disc)) || 0,
+        };
+      }).filter(Boolean);
+      await withTimeout(upsertPrices(selBrand, rows), 20000);
+      setDirtyRows(new Set());
+      showToast(`✓ ${rows.length} satır kaydedildi`);
     } catch (err) {
       showToast('Kayıt hatası: ' + err.message);
     } finally {
-      setSaving(false);
+      setAllSaving(false);
     }
   }
 
@@ -114,26 +151,20 @@ function PriceListTab() {
     if (!selBrand) return;
     setSeeding(true);
     try {
-      await seedBrandFromConstants(selBrand, null);
+      await withTimeout(seedBrandFromConstants(selBrand, null), 20000);
       showToast('Kalde varsayılan fiyatları yüklendi');
-    } catch (err) {
-      showToast('Hata: ' + err.message);
-    } finally {
-      setSeeding(false);
-    }
+    } catch (err) { showToast('Hata: ' + err.message); }
+    finally { setSeeding(false); }
   }
 
   async function handleSeedFirat() {
     if (!selBrand) return;
     setSeeding(true);
     try {
-      await seedBrandFromConstants(selBrand, PRICES_FIRAT);
+      await withTimeout(seedBrandFromConstants(selBrand, PRICES_FIRAT), 20000);
       showToast('Fırat Boru fiyatları yüklendi');
-    } catch (err) {
-      showToast('Hata: ' + err.message);
-    } finally {
-      setSeeding(false);
-    }
+    } catch (err) { showToast('Hata: ' + err.message); }
+    finally { setSeeding(false); }
   }
 
   const CAT_MAP = { boru:'Boru', baglanti:'Bağlantı', vana:'Vana', mekanik:'Mekanik Oda' };
@@ -141,7 +172,6 @@ function PriceListTab() {
     catFilter === 'Tümü' || CAT_MAP[p.cat] === catFilter
   );
 
-  // Marka kategorisine göre grupla
   const brandGroups = BRAND_CAT_OPT.map(cat => ({
     ...cat,
     brands: brands.filter(b => b.category === cat.value),
@@ -150,10 +180,11 @@ function PriceListTab() {
   return (
     <div>
       <Card accent="acc" title="Marka Fiyat Listesi">
+        {/* Üst araç çubuğu */}
         <div style={{ display:'flex', gap:12, marginBottom:16, flexWrap:'wrap', alignItems:'flex-end' }}>
           <div className="field" style={{ minWidth:240 }}>
             <label>Marka Seç</label>
-            <GlassSelect value={selBrand} onChange={e => handleBrandSelect(e.target.value)}>
+            <GlassSelect value={selBrand} onChange={e => setSelBrand(e.target.value)}>
               <option value="">— Marka seçin —</option>
               {brandGroups.map(g => (
                 <optgroup key={g.value} label={g.label}>
@@ -164,7 +195,6 @@ function PriceListTab() {
               ))}
             </GlassSelect>
           </div>
-          {/* Kategori filtresi */}
           <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
             {CAT_FILTER_OPTS.map(opt => (
               <button key={opt} onClick={() => setCatFilter(opt)} style={{
@@ -175,9 +205,6 @@ function PriceListTab() {
               }}>{opt}</button>
             ))}
           </div>
-          <Button variant="primary" onClick={handleSave} disabled={!selBrand || saving} style={{ marginLeft:'auto' }}>
-            {saving ? 'Kaydediliyor...' : 'Kaydet'}
-          </Button>
         </div>
 
         {/* Hazır fiyat yükleme */}
@@ -194,35 +221,54 @@ function PriceListTab() {
           </div>
         )}
 
+        {/* Değişiklik özeti çubuğu */}
+        {dirtyRows.size > 0 && (
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10, padding:'8px 14px', background:'rgba(59,130,246,0.08)', border:'1px solid var(--acc)', borderRadius:'var(--r2)' }}>
+            <span style={{ fontSize:12, color:'var(--acc)', fontWeight:600 }}>
+              {dirtyRows.size} satırda kaydedilmemiş değişiklik var
+            </span>
+            <Button variant="primary" onClick={saveAll} disabled={allSaving} style={{ padding:'4px 14px', fontSize:12 }}>
+              {allSaving ? 'Kaydediliyor...' : `✓ Tümünü Kaydet (${dirtyRows.size})`}
+            </Button>
+          </div>
+        )}
+
+        {!selBrand && (
+          <div className="al al-i" style={{ marginBottom:12 }}>Fiyat düzenlemek için önce marka seçin.</div>
+        )}
+
         <div className="rtw">
-          <table style={{ minWidth:560 }}>
+          <table style={{ minWidth:600 }}>
             <thead>
               <tr>
                 <th>Kategori</th><th>Ürün</th><th>Birim</th>
-                <th style={{ textAlign:'right' }}>Liste (TL)</th>
-                <th style={{ textAlign:'right' }}>İsk%</th>
-                <th style={{ textAlign:'right' }}>Net (TL)</th>
+                <th style={{ textAlign:'right', minWidth:110 }}>Liste (TL)</th>
+                <th style={{ textAlign:'right', minWidth:70 }}>İsk%</th>
+                <th style={{ textAlign:'right', minWidth:90 }}>Net (TL)</th>
+                <th style={{ width:70 }}></th>
               </tr>
             </thead>
             <tbody>
               {filteredPrices.map(p => {
-                const lp = localPrices[p.id]?.list_price  ?? p.list;
-                const dp = localPrices[p.id]?.discount_pct?? p.disc;
-                const net = lp * (1 - dp / 100);
+                const lp  = rowVal(p.id, 'list_price',   p.list);
+                const dp  = rowVal(p.id, 'discount_pct', p.disc);
+                const net = (parseFloat(lp) || 0) * (1 - (parseFloat(dp) || 0) / 100);
+                const dirty  = dirtyRows.has(p.id);
+                const saving = rowSaving[p.id];
                 return (
-                  <tr key={p.id}>
+                  <tr key={p.id} style={{ background: dirty ? 'rgba(59,130,246,0.04)' : undefined }}>
                     <td><Badge variant={p.cat}>{CAT_LABEL[p.cat]}</Badge></td>
                     <td style={{ fontSize:12 }}>{p.n}</td>
                     <td style={{ color:'var(--muted)', fontFamily:'var(--mono)' }}>{p.u}</td>
                     <td>
-                      <input className="pti" type="number" value={lp} min="0" step="0.01"
+                      <input className="pti" type="number" value={lp ?? ''} min="0" step="0.01"
                         disabled={!selBrand}
                         onChange={e => upd(p.id, 'list_price', e.target.value)}
                         style={!selBrand ? { opacity:.5, cursor:'not-allowed' } : {}}
                       />
                     </td>
                     <td>
-                      <input className="ptd" type="number" value={dp} min="0" max="100" step="1"
+                      <input className="ptd" type="number" value={dp ?? ''} min="0" max="100" step="1"
                         disabled={!selBrand}
                         onChange={e => upd(p.id, 'discount_pct', e.target.value)}
                         style={!selBrand ? { opacity:.5, cursor:'not-allowed' } : {}}
@@ -230,6 +276,17 @@ function PriceListTab() {
                     </td>
                     <td style={{ textAlign:'right', fontFamily:'var(--mono)', color:'var(--green)', fontSize:12 }}>
                       {TR(net)}
+                    </td>
+                    <td>
+                      {dirty && (
+                        <button
+                          onClick={() => saveRow(p.id)}
+                          disabled={saving}
+                          style={{ background:'var(--acc)', color:'#fff', border:'none', borderRadius:6, padding:'3px 10px', fontSize:11, cursor:'pointer', fontWeight:700, whiteSpace:'nowrap', opacity: saving ? .6 : 1 }}
+                        >
+                          {saving ? '...' : '✓'}
+                        </button>
+                      )}
                     </td>
                   </tr>
                 );

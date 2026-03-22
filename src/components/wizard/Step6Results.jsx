@@ -141,13 +141,22 @@ export function Step6Results({ goStep }) {
   const saveHistory     = useCalculationStore(s => s.saveHistory);
   const projectName     = useCalculationStore(s => s.projectName);
   const parentProjectId = useCalculationStore(s => s.parentProjectId);
+  const isReadOnly      = useCalculationStore(s => s.isReadOnly);
+  const startRevision   = useCalculationStore(s => s.startRevision);
   const { user }        = useAuthStore();
   const navigate        = useNavigate();
+
+  const projectId = useCalculationStore(s => s.projectId);
 
   const [error,    setError]    = useState(null);
   const [saving,   setSaving]   = useState(false);
   const [saveName, setSaveName] = useState(projectName || '');
   const [showSave, setShowSave] = useState(false);
+
+  function handleStartRevision() {
+    startRevision({ id: projectId, name: projectName, config });
+    navigate('/hesaplama/yeni');
+  }
 
   // ── Hesapla ────────────────────────────────────────────────────
   const runCalculation = useCallback(() => {
@@ -200,17 +209,19 @@ export function Step6Results({ goStep }) {
   return (
     <div>
 
-      {/* Revizyon modu göstergesi */}
-      {parentProjectId && (
+      {/* Revizyon modu banner */}
+      {parentProjectId && !isReadOnly && (
         <div style={{ marginBottom:12, padding:'8px 14px', background:'rgba(59,130,246,0.08)', border:'1px solid var(--acc)', borderRadius:'var(--r)', fontSize:12, color:'var(--acc)', fontWeight:600 }}>
           ↩ Revizyon Modu — Kaydettiğinizde yeni bir kayıt oluşturulacak, orijinal değişmeyecek.
         </div>
       )}
 
-      {/* Hesapla */}
-      <div style={{ marginBottom:16 }}>
-        <Button variant="calc" onClick={runCalculation}>⚡ Hesapla</Button>
-      </div>
+      {/* Hesapla — read-only modda gösterme */}
+      {!isReadOnly && (
+        <div style={{ marginBottom:16 }}>
+          <Button variant="calc" onClick={runCalculation}>⚡ Hesapla</Button>
+        </div>
+      )}
 
       {error && <div className="al al-w" style={{ marginBottom:14 }}>{error}</div>}
       {!result && !error && <div className="al al-i">Henüz hesaplama yapılmadı. "Hesapla" butonuna basın.</div>}
@@ -242,10 +253,21 @@ export function Step6Results({ goStep }) {
           <div className="btn-row no-print" style={{ marginTop:16 }}>
             <Button variant="default" onClick={() => window.print()}>🖨 Yazdır / PDF</Button>
             <Button variant="success" onClick={exportExcel} style={{ background:'#1d6f42', color:'#fff' }}>📥 Excel İndir</Button>
-            <Button variant="primary" onClick={() => { setShowSave(v => !v); setSaveName(projectName || ''); }}>
-              💾 {parentProjectId ? 'Revizyon Olarak Kaydet' : 'Projeyi Kaydet'}
-            </Button>
-            <Button variant="default" onClick={() => goStep(0)}>↩ Başa Dön</Button>
+            {isReadOnly ? (
+              // Görüntüleme modunda: kayıt yok, sadece revizyon başlatma
+              <>
+                <Button variant="primary" onClick={handleStartRevision}>↻ Revizyon Yap</Button>
+                <Button variant="default" onClick={() => navigate('/gecmis')}>← Geçmiş</Button>
+              </>
+            ) : (
+              // Düzenleme / Revizyon modu: kayıt butonu aktif
+              <>
+                <Button variant="primary" onClick={() => { setShowSave(v => !v); setSaveName(projectName || ''); }}>
+                  💾 {parentProjectId ? 'Revizyon Olarak Kaydet' : 'Projeyi Kaydet'}
+                </Button>
+                <Button variant="default" onClick={() => goStep(0)}>↩ Başa Dön</Button>
+              </>
+            )}
           </div>
 
           {/* Kaydet formu */}
