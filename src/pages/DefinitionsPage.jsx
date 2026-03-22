@@ -301,9 +301,12 @@ function PriceListTab() {
 
 // ── Markalar Tab ──────────────────────────────────────────────────────
 function BrandsTab() {
-  const { brands, fetchBrands, addBrand, deleteBrand, seedDefaultBrands, loading, error } = useDefinitionsStore();
-  const [form,    setForm]    = useState({ name:'', category:'ppr', description:'' });
-  const [seeding, setSeeding] = useState(false);
+  const { brands, fetchBrands, addBrand, updateBrand, deleteBrand, seedDefaultBrands, loading, error } = useDefinitionsStore();
+  const [form,     setForm]     = useState({ name:'', category:'ppr', description:'' });
+  const [seeding,  setSeeding]  = useState(false);
+  const [editId,   setEditId]   = useState(null);
+  const [editForm, setEditForm] = useState({ name:'', category:'ppr', description:'' });
+  const [saving,   setSaving]   = useState(false);
 
   useEffect(() => { fetchBrands(); }, []);
 
@@ -314,6 +317,26 @@ function BrandsTab() {
       setForm({ name:'', category:'ppr', description:'' });
       showToast('Marka eklendi');
     } catch (err) { showToast('Hata: ' + err.message); }
+  }
+
+  function handleEditStart(b) {
+    setEditId(b.id);
+    setEditForm({ name: b.name, category: b.category, description: b.description || '' });
+  }
+
+  function handleEditCancel() {
+    setEditId(null);
+  }
+
+  async function handleEditSave(id) {
+    if (!editForm.name.trim()) { showToast('Marka adı boş olamaz'); return; }
+    setSaving(true);
+    try {
+      await updateBrand(id, editForm);
+      setEditId(null);
+      showToast('✓ Marka güncellendi');
+    } catch (err) { showToast('Hata: ' + err.message); }
+    finally { setSaving(false); }
   }
 
   async function handleDelete(id) {
@@ -388,13 +411,59 @@ function BrandsTab() {
             <tr><th>Marka</th><th>Kategori</th><th>Açıklama</th><th></th></tr>
           </thead>
           <tbody>
-            {brands.map(b => (
+            {brands.map(b => editId === b.id ? (
+              <tr key={b.id} style={{ background:'rgba(59,130,246,0.06)' }}>
+                <td>
+                  <input
+                    type="text"
+                    value={editForm.name}
+                    onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                    style={{ width:'100%', minWidth:130 }}
+                    autoFocus
+                  />
+                </td>
+                <td>
+                  <GlassSelect value={editForm.category} onChange={e => setEditForm({ ...editForm, category: e.target.value })}>
+                    {BRAND_CAT_OPT.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </GlassSelect>
+                </td>
+                <td>
+                  <input
+                    type="text"
+                    value={editForm.description}
+                    onChange={e => setEditForm({ ...editForm, description: e.target.value })}
+                    style={{ width:'100%', minWidth:180 }}
+                    placeholder="İsteğe bağlı..."
+                  />
+                </td>
+                <td style={{ whiteSpace:'nowrap', display:'flex', gap:5 }}>
+                  <button
+                    onClick={() => handleEditSave(b.id)}
+                    disabled={saving}
+                    style={{ background:'var(--green)', border:'none', color:'#fff', borderRadius:999, padding:'3px 10px', fontSize:11, cursor:'pointer' }}>
+                    {saving ? '...' : 'Kaydet'}
+                  </button>
+                  <button
+                    onClick={handleEditCancel}
+                    style={{ background:'transparent', border:'1px solid var(--border)', color:'var(--muted)', borderRadius:999, padding:'3px 9px', fontSize:11, cursor:'pointer' }}>
+                    İptal
+                  </button>
+                </td>
+              </tr>
+            ) : (
               <tr key={b.id}>
                 <td style={{ fontWeight:700 }}>{b.name}</td>
                 <td style={{ color:'var(--muted)', fontSize:11 }}>{BRAND_CAT_OPT.find(o=>o.value===b.category)?.label || b.category}</td>
                 <td style={{ color:'var(--muted)', fontSize:12 }}>{b.description || '—'}</td>
-                <td>
-                  <button onClick={() => handleDelete(b.id)} style={{ background:'transparent', border:'1px solid var(--border)', color:'var(--red)', borderRadius:999, padding:'3px 9px', fontSize:11, cursor:'pointer' }}>
+                <td style={{ whiteSpace:'nowrap', display:'flex', gap:5 }}>
+                  <button
+                    onClick={() => handleEditStart(b)}
+                    style={{ background:'transparent', border:'1px solid var(--border)', color:'var(--acc)', borderRadius:999, padding:'3px 9px', fontSize:11, cursor:'pointer' }}>
+                    Düzenle
+                  </button>
+                  <button
+                    onClick={() => handleDelete(b.id)}
+                    style={{ background:'transparent', border:'1px solid var(--border)', color:'var(--red)', borderRadius:999, padding:'3px 9px', fontSize:11, cursor:'pointer' }}>
                     Sil
                   </button>
                 </td>
