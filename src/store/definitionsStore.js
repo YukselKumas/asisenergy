@@ -17,14 +17,34 @@ export const useDefinitionsStore = create((set, get) => ({
   // ── Markalar ──────────────────────────────────────────────────────
 
   fetchBrands: async () => {
-    set({ loading: true });
+    set({ loading: true, error: null });
     const { data, error } = await supabase
       .from('brands')
       .select('*')
       .eq('is_active', true)
       .order('name');
     if (error) { set({ error: error.message, loading: false }); return; }
-    set({ brands: data, loading: false });
+    set({ brands: data || [], loading: false });
+  },
+
+  /** Varsayılan markaları DB'ye ekle (yoksa) */
+  seedDefaultBrands: async () => {
+    const defaults = [
+      { name:'Kalde',              category:'ppr',    description:'PP-R boru ve bağlantı parçaları' },
+      { name:'Fırat Boru',         category:'ppr',    description:'PP-R boru ve bağlantı parçaları' },
+      { name:'Wavin Tigris',       category:'ppr',    description:'PP-R boru ve bağlantı parçaları' },
+      { name:'Standart / Press',   category:'valve',  description:'Pirinç küresel vana' },
+      { name:'Caleffi',            category:'valve',  description:'Pirinç küresel vana' },
+      { name:'Caleffi',            category:'bd',     description:'Daire başı basınç düşürücü' },
+      { name:'Honeywell / Resideo',category:'bd',     description:'Daire başı basınç düşürücü' },
+      { name:'Kalde',              category:'filter', description:'Filtre ve çekvalf' },
+    ];
+    const { error } = await supabase.from('brands').upsert(
+      defaults.map(b => ({ ...b, is_active: true })),
+      { onConflict: 'name,category', ignoreDuplicates: false }
+    );
+    if (error) throw error;
+    await get().fetchBrands();
   },
 
   addBrand: async (brand) => {

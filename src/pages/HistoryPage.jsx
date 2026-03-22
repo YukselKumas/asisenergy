@@ -138,10 +138,11 @@ export function HistoryPage() {
 
   async function fetchProjects() {
     setLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('projects')
-      .select('id,name,building_name,status,created_at,result,config,parent_project_id')
+      .select('*')
       .order('created_at', { ascending: false });
+    if (error) console.error('Proje listesi yüklenemedi:', error.message);
     if (data) setProjects(data);
     setLoading(false);
   }
