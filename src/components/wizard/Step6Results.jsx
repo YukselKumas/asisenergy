@@ -141,6 +141,7 @@ export function Step6Results({ goStep }) {
   const saveHistory     = useCalculationStore(s => s.saveHistory);
   const projectName     = useCalculationStore(s => s.projectName);
   const parentProjectId = useCalculationStore(s => s.parentProjectId);
+  const loadedParentId  = useCalculationStore(s => s.loadedParentId);
   const isReadOnly      = useCalculationStore(s => s.isReadOnly);
   const startRevision   = useCalculationStore(s => s.startRevision);
   const { user }        = useAuthStore();
@@ -155,7 +156,11 @@ export function Step6Results({ goStep }) {
   const [showSave,  setShowSave]  = useState(false);
 
   function handleStartRevision() {
-    startRevision({ id: projectId, name: projectName, config });
+    // Eğer bir varyasyonu görüntülüyorsak (loadedParentId var), yeni varyasyon
+    // o varyasyonun değil ROOT projenin altında oluşmalı (sibling, child değil).
+    const rootId   = loadedParentId || projectId;
+    const rootName = projectName.replace(/\s*—\s*V\d+$/, ''); // " — V1" suffix temizle
+    startRevision({ id: rootId, name: rootName, config });
     navigate('/hesaplama/yeni');
   }
 
