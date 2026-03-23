@@ -238,15 +238,15 @@ export const useCalculationStore = create((set, get) => ({
   }),
 
   /**
-   * Mevcut bir projeyi temel alarak revizyon başlat.
+   * Mevcut bir projeyi temel alarak varyasyon başlat.
    * Config kopyalanır, yeni proje olarak kaydedilecek, parent referansı saklanır.
-   * revNumber: otomatik R1, R2, ... numarası
+   * varNumber: otomatik V1, V2, ... numarası
    */
-  startRevision: (project, revNumber = 1) => set({
+  startRevision: (project, varNumber = 1) => set({
     config:          { ...DEFAULT_CONFIG, ...project.config },
     result:          null,
     projectId:       null,
-    projectName:     `${project.name} — R${revNumber}`,
+    projectName:     `${project.name} — V${varNumber}`,
     parentProjectId: project.id,
     isReadOnly:      false,
     isDirty:         true,

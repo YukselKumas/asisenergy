@@ -1,4 +1,4 @@
-// ── HistoryPage — Kaydedilmiş hesaplamalar listesi ────────────────────
+// ── HistoryPage — Kaydedilmiş hesaplamalar + Varyasyon sistemi ──────────
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -16,157 +16,171 @@ const STATUS_LABEL = {
   archived:  { label:'Arşiv',      color:'var(--muted)' },
 };
 
-// ── Revizyon Karşılaştırma Modalı ─────────────────────────────────────
-// Sadece aynı projenin revizyonlarını karşılaştırır
-function RevisionCompareModal({ parent, revisions, onClose }) {
-  // Karşılaştırılacak 2 sürümü seç (başlangıç: parent + ilk revizyon)
-  const allVersions = [parent, ...revisions]; // parent + R1, R2...
-  const [selA, setSelA] = useState(parent.id);
-  const [selB, setSelB] = useState(revisions[0]?.id || parent.id);
-
-  const vA = allVersions.find(v => v.id === selA);
-  const vB = allVersions.find(v => v.id === selB);
-
-  function vLabel(v, idx) {
-    if (v.id === parent.id) return v.name;
-    return `R${idx}`;
-  }
+// ── Varyasyon Karşılaştırma Modalı — sınırsız sütun matrisi ──────────
+function VaryasyonCompareModal({ parent, variants, onClose }) {
+  // Tüm versiyonlar: Ana proje + V1, V2, V3...
+  const allVersions = [{ ...parent, _label: parent.name, _tag: 'Ana' }, ...variants.map((v, i) => ({ ...v, _label: v.name, _tag: `V${i + 1}` }))];
 
   const metrics = [
-    { label: 'Toplam (KDV Dahil)', key: 'grandTotal', unit: '₺', decimals: 0 },
-    { label: 'Toplam (KDV Hariç)', key: 'grandNet',   unit: '₺', decimals: 0 },
-    { label: 'Toplam Boru (m)',    key: 'totalPipe',  unit: 'm',  decimals: 1 },
-    { label: 'Toplam Daire',       key: 'totalFlats', unit: '',   decimals: 0 },
+    { label: 'Toplam (KDV Dahil)', key: 'grandTotal',  unit: '₺', decimals: 0, best: 'min' },
+    { label: 'Toplam (KDV Hariç)', key: 'grandNet',    unit: '₺', decimals: 0, best: 'min' },
+    { label: 'Toplam Boru (m)',    key: 'totalPipe',    unit: 'm', decimals: 1, best: null  },
+    { label: 'Toplam Daire',       key: 'totalFlats',   unit: '',  decimals: 0, best: null  },
+    { label: 'Daire Başı Maliyet', key: '_perFlat',     unit: '₺', decimals: 0, best: 'min' },
   ];
 
-  const cheapest = vA?.result?.grandTotal != null && vB?.result?.grandTotal != null
-    ? (vA.result.grandTotal <= vB.result.grandTotal ? vA : vB)
-    : null;
+  // Daire başı maliyet türet
+  const versionsWithDerived = allVersions.map(v => ({
+    ...v,
+    result: v.result ? {
+      ...v.result,
+      _perFlat: v.result.totalFlats > 0 ? Math.round(v.result.grandTotal / v.result.totalFlats) : null,
+    } : null,
+  }));
+
+  // Her metrik için en iyi değeri bul
+  function bestValue(key, best) {
+    if (!best) return null;
+    const vals = versionsWithDerived.map(v => v.result?.[key]).filter(x => typeof x === 'number');
+    if (vals.length === 0) return null;
+    return best === 'min' ? Math.min(...vals) : Math.max(...vals);
+  }
 
   return (
     <div
-      style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}
+      style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.55)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}
       onClick={onClose}
     >
       <div
         onClick={e => e.stopPropagation()}
-        style={{ background:'var(--white)', borderRadius:'var(--r)', boxShadow:'0 12px 48px rgba(0,0,0,0.22)', padding:28, maxWidth:700, width:'100%', maxHeight:'90vh', overflowY:'auto' }}
+        style={{ background:'var(--white)', borderRadius:'var(--r)', boxShadow:'0 16px 56px rgba(0,0,0,0.25)', padding:28, maxWidth:'min(900px, 95vw)', width:'100%', maxHeight:'90vh', overflowY:'auto', overflowX:'auto' }}
       >
         {/* Başlık */}
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:22 }}>
           <div>
-            <div style={{ fontSize:16, fontWeight:800 }}>Revizyon Karşılaştırması</div>
-            <div style={{ fontSize:12, color:'var(--muted)', marginTop:2 }}>{parent.name}</div>
+            <div style={{ fontSize:17, fontWeight:800, letterSpacing:'-.3px' }}>Varyasyon Karşılaştırması</div>
+            <div style={{ fontSize:12, color:'var(--muted)', marginTop:3 }}>
+              {parent.name} — {allVersions.length} versiyon
+            </div>
           </div>
-          <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', fontSize:22, color:'var(--muted)', lineHeight:1, padding:'0 4px' }}>×</button>
+          <button onClick={onClose} style={{ background:'none', border:'none', cursor:'pointer', fontSize:24, color:'var(--muted)', lineHeight:1, padding:'0 4px' }}>×</button>
         </div>
 
-        {/* Versiyon seçici */}
-        <div style={{ display:'flex', gap:10, marginBottom:18, padding:'12px 14px', background:'var(--bg)', borderRadius:'var(--r2)', flexWrap:'wrap', alignItems:'center' }}>
-          <span style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.4px' }}>Karşılaştır:</span>
-          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-            <span style={{ fontSize:12, color:'var(--muted)' }}>A:</span>
-            <select value={selA} onChange={e => setSelA(e.target.value)}
-              style={{ padding:'5px 10px', border:'1px solid var(--border)', borderRadius:'var(--r2)', fontSize:12, fontFamily:'var(--sans)', outline:'none', background:'var(--white)', fontWeight:600, color:'var(--acc)' }}>
-              {allVersions.map((v, i) => (
-                <option key={v.id} value={v.id}>{i === 0 ? v.name + ' (Ana)' : `R${i} — ${v.name}`}</option>
-              ))}
-            </select>
-          </div>
-          <span style={{ fontSize:14, color:'var(--muted)' }}>⇌</span>
-          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-            <span style={{ fontSize:12, color:'var(--muted)' }}>B:</span>
-            <select value={selB} onChange={e => setSelB(e.target.value)}
-              style={{ padding:'5px 10px', border:'1px solid var(--border)', borderRadius:'var(--r2)', fontSize:12, fontFamily:'var(--sans)', outline:'none', background:'var(--white)', fontWeight:600 }}>
-              {allVersions.map((v, i) => (
-                <option key={v.id} value={v.id}>{i === 0 ? v.name + ' (Ana)' : `R${i} — ${v.name}`}</option>
-              ))}
-            </select>
-          </div>
+        {/* Versiyon özet kartları */}
+        <div style={{ display:'flex', gap:8, marginBottom:20, flexWrap:'wrap' }}>
+          {versionsWithDerived.map((v, i) => {
+            const isAna   = i === 0;
+            const isBest  = v.result?.grandTotal != null && v.result.grandTotal === bestValue('grandTotal', 'min');
+            return (
+              <div key={v.id} style={{
+                padding:'10px 14px', borderRadius:'var(--r2)',
+                border: isBest ? '2px solid var(--green)' : '1px solid var(--border)',
+                background: isBest ? 'rgba(16,185,129,0.05)' : 'var(--bg)',
+                minWidth: 120, position:'relative',
+              }}>
+                {isBest && (
+                  <div style={{ position:'absolute', top:-8, left:10, fontSize:9, fontWeight:800, background:'var(--green)', color:'#fff', borderRadius:999, padding:'2px 7px', letterSpacing:'.3px' }}>
+                    EN UCUZ
+                  </div>
+                )}
+                <div style={{ fontSize:11, fontWeight:800, color: isAna ? 'var(--text)' : 'var(--acc)', marginBottom:5 }}>
+                  {v._tag}
+                </div>
+                <div style={{ fontSize:14, fontFamily:'var(--mono)', fontWeight:700, color: isBest ? 'var(--green)' : 'var(--acc)' }}>
+                  {v.result?.grandTotal != null ? `${TR(v.result.grandTotal)} ₺` : '—'}
+                </div>
+                <div style={{ fontSize:10, color:'var(--muted)', marginTop:3 }}>
+                  {new Date(v.created_at).toLocaleDateString('tr-TR')}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
-        {/* Karşılaştırma tablosu */}
-        {vA && vB && (
-          <table style={{ width:'100%', borderCollapse:'collapse', marginBottom:16 }}>
+        {/* Karşılaştırma matrisi */}
+        <div style={{ overflowX:'auto' }}>
+          <table style={{ width:'100%', borderCollapse:'collapse', minWidth: 400 }}>
             <thead>
               <tr style={{ borderBottom:'2px solid var(--border)' }}>
-                <th style={{ textAlign:'left', fontSize:11, color:'var(--muted)', padding:'6px 0 10px', fontWeight:700, textTransform:'uppercase', letterSpacing:'.4px' }}>Metrik</th>
-                <th style={{ textAlign:'right', fontSize:13, padding:'6px 12px 10px' }}>
-                  <div style={{ fontWeight:800, color:'var(--acc)' }}>{vLabel(vA, allVersions.indexOf(vA))}</div>
-                  <div style={{ fontSize:10, color:'var(--muted)', fontWeight:400 }}>{new Date(vA.created_at).toLocaleDateString('tr-TR')}</div>
+                <th style={{ textAlign:'left', fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.4px', padding:'7px 12px 10px 0', whiteSpace:'nowrap', minWidth:140 }}>
+                  Metrik
                 </th>
-                <th style={{ textAlign:'right', fontSize:13, padding:'6px 12px 10px' }}>
-                  <div style={{ fontWeight:700 }}>{vLabel(vB, allVersions.indexOf(vB))}</div>
-                  <div style={{ fontSize:10, color:'var(--muted)', fontWeight:400 }}>{new Date(vB.created_at).toLocaleDateString('tr-TR')}</div>
-                </th>
-                <th style={{ textAlign:'right', fontSize:11, color:'var(--muted)', padding:'6px 0 10px', fontWeight:700, textTransform:'uppercase', letterSpacing:'.4px', whiteSpace:'nowrap' }}>Fark (A−B)</th>
+                {versionsWithDerived.map((v, i) => (
+                  <th key={v.id} style={{ textAlign:'right', padding:'7px 12px 10px', minWidth:110 }}>
+                    <div style={{ fontWeight:800, fontSize:13, color: i === 0 ? 'var(--text)' : 'var(--acc)' }}>{v._tag}</div>
+                    <div style={{ fontSize:10, fontWeight:400, color:'var(--muted)' }}>{v._label.replace(parent.name, '').replace('—', '').trim() || parent.name}</div>
+                  </th>
+                ))}
+                {versionsWithDerived.length > 1 && (
+                  <th style={{ textAlign:'right', fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.4px', padding:'7px 0 10px 12px', whiteSpace:'nowrap' }}>
+                    En İyi
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
-              {metrics.map(({ label, key, unit, decimals }) => {
-                const va = vA.result?.[key];
-                const vb = vB.result?.[key];
-                const diff = typeof va === 'number' && typeof vb === 'number' ? va - vb : null;
+              {metrics.map(({ label, key, unit, decimals, best }) => {
+                const bv = bestValue(key, best);
                 const fmt = v => v != null ? `${TR(v, decimals)}${unit ? ' ' + unit : ''}` : '—';
                 return (
                   <tr key={label} style={{ borderTop:'1px solid var(--border)' }}>
-                    <td style={{ padding:'9px 0', fontWeight:600, color:'var(--muted)', fontSize:12, whiteSpace:'nowrap' }}>{label}</td>
-                    <td style={{ padding:'9px 12px', textAlign:'right', fontFamily:'var(--mono)', fontSize:13, fontWeight:700, color:'var(--acc)' }}>{fmt(va)}</td>
-                    <td style={{ padding:'9px 12px', textAlign:'right', fontFamily:'var(--mono)', fontSize:13 }}>{fmt(vb)}</td>
-                    <td style={{ padding:'9px 0', textAlign:'right', fontFamily:'var(--mono)', fontSize:12, fontWeight:700,
-                      color: diff === null ? 'var(--muted)' : diff < 0 ? 'var(--green)' : diff > 0 ? 'var(--red)' : 'var(--muted)' }}>
-                      {diff === null ? '—' : diff === 0 ? '=' : `${diff > 0 ? '+' : ''}${TR(diff, decimals)}`}
+                    <td style={{ padding:'9px 12px 9px 0', fontWeight:600, color:'var(--muted)', fontSize:12, whiteSpace:'nowrap' }}>
+                      {label}
                     </td>
+                    {versionsWithDerived.map(v => {
+                      const val   = v.result?.[key];
+                      const isBst = best && val != null && val === bv;
+                      return (
+                        <td key={v.id} style={{
+                          padding:'9px 12px', textAlign:'right',
+                          fontFamily:'var(--mono)', fontSize:13,
+                          fontWeight: isBst ? 800 : 600,
+                          color: isBst ? 'var(--green)' : 'var(--text)',
+                          background: isBst ? 'rgba(16,185,129,0.07)' : undefined,
+                          borderRadius: isBst ? 4 : undefined,
+                        }}>
+                          {fmt(val)}
+                        </td>
+                      );
+                    })}
+                    {versionsWithDerived.length > 1 && (
+                      <td style={{ padding:'9px 0 9px 12px', textAlign:'right', fontSize:11, color:'var(--green)', fontWeight:800 }}>
+                        {bv != null ? versionsWithDerived.find(v => v.result?.[key] === bv)?._tag : '—'}
+                      </td>
+                    )}
                   </tr>
                 );
               })}
             </tbody>
           </table>
-        )}
+        </div>
 
         {/* Kazanan özeti */}
-        {cheapest && selA !== selB && (
-          <div style={{ padding:'10px 14px', background:'rgba(16,185,129,0.08)', border:'1px solid rgba(16,185,129,0.25)', borderRadius:'var(--r2)', fontSize:12, color:'var(--muted)', marginBottom:16 }}>
-            <strong style={{ color:'var(--green)' }}>
-              {vLabel(cheapest, allVersions.indexOf(cheapest))}
-            </strong>
-            {' '}bu teklifte{' '}
-            <strong style={{ color:'var(--green)' }}>
-              {TR(Math.abs((vA?.result?.grandTotal ?? 0) - (vB?.result?.grandTotal ?? 0)))} ₺
-              {' '}
-              (%{(Math.abs(((vA?.result?.grandTotal - vB?.result?.grandTotal) / Math.max(vA?.result?.grandTotal, vB?.result?.grandTotal))) * 100).toFixed(1)}) daha ucuz.
-            </strong>
-          </div>
-        )}
-
-        {/* Tüm sürümler özet tablosu */}
-        {allVersions.length > 2 && (
-          <div style={{ marginBottom:16 }}>
-            <div style={{ fontSize:11, fontWeight:700, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.4px', marginBottom:8 }}>
-              Tüm Sürümler
+        {versionsWithDerived.length > 1 && (() => {
+          const winner = versionsWithDerived.reduce((a, b) => {
+            const av = a.result?.grandTotal, bv = b.result?.grandTotal;
+            if (av == null) return b; if (bv == null) return a;
+            return av <= bv ? a : b;
+          });
+          const worst = versionsWithDerived.reduce((a, b) => {
+            const av = a.result?.grandTotal, bv = b.result?.grandTotal;
+            if (av == null) return b; if (bv == null) return a;
+            return av >= bv ? a : b;
+          });
+          const diff = (worst.result?.grandTotal ?? 0) - (winner.result?.grandTotal ?? 0);
+          if (diff <= 0) return null;
+          const pct  = ((diff / (worst.result?.grandTotal ?? 1)) * 100).toFixed(1);
+          return (
+            <div style={{ marginTop:18, padding:'11px 16px', background:'rgba(16,185,129,0.08)', border:'1px solid rgba(16,185,129,0.25)', borderRadius:'var(--r2)', fontSize:12, color:'var(--muted)' }}>
+              <strong style={{ color:'var(--green)' }}>{winner._tag} ({winner._label})</strong>
+              {' '}en ucuz teklif —{' '}
+              <strong style={{ color:'var(--green)' }}>{TR(diff)} ₺ (%{pct})</strong>
+              {' '}daha düşük.
             </div>
-            <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
-              {allVersions.map((v, i) => (
-                <div key={v.id} style={{
-                  padding:'8px 14px', background:'var(--bg)', border:'1px solid var(--border)',
-                  borderRadius:'var(--r2)', minWidth:130,
-                }}>
-                  <div style={{ fontSize:11, fontWeight:800, color: i === 0 ? 'var(--text)' : 'var(--acc)', marginBottom:4 }}>
-                    {i === 0 ? 'Ana' : `R${i}`}
-                  </div>
-                  <div style={{ fontSize:13, fontFamily:'var(--mono)', fontWeight:700, color:'var(--acc)' }}>
-                    {v.result?.grandTotal != null ? `${TR(v.result.grandTotal)} ₺` : '—'}
-                  </div>
-                  <div style={{ fontSize:10, color:'var(--muted)', marginTop:2 }}>
-                    {new Date(v.created_at).toLocaleDateString('tr-TR')}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+          );
+        })()}
 
-        <div style={{ textAlign:'right' }}>
+        <div style={{ textAlign:'right', marginTop:20 }}>
           <Button variant="default" onClick={onClose}>Kapat</Button>
         </div>
       </div>
@@ -174,24 +188,22 @@ function RevisionCompareModal({ parent, revisions, onClose }) {
   );
 }
 
-// ── Ana bileşen ─────────────────────────────────────────────────────
+// ── Ana bileşen ─────────────────────────────────────────────────────────
 export function HistoryPage() {
   const [projects,     setProjects]     = useState([]);
   const [search,       setSearch]       = useState('');
   const [loading,      setLoading]      = useState(true);
   const [fetchError,   setFetchError]   = useState(null);
-  const [expanded,     setExpanded]     = useState({});    // parentId → bool (undefined = açık)
-  const [compareGroup, setCompareGroup] = useState(null);  // parentId → modal açık
+  const [expanded,     setExpanded]     = useState({});   // parentId → bool
+  const [compareId,    setCompareId]    = useState(null); // parentId → karşılaştırma modal
 
   const { loadProject, editProject, startRevision } = useCalculationStore();
-  const isAdmin = useAuthStore(s => s.isAdmin);
+  const isAdmin  = useAuthStore(s => s.isAdmin);
   const navigate = useNavigate();
-
-  const admin = typeof isAdmin === 'function' ? isAdmin() : false;
+  const admin    = typeof isAdmin === 'function' ? isAdmin() : false;
 
   const fetchProjects = useCallback(async () => {
-    setLoading(true);
-    setFetchError(null);
+    setLoading(true); setFetchError(null);
     try {
       const { data, error } = await withTimeout(
         supabase.from('projects').select('*').order('created_at', { ascending: false }),
@@ -209,9 +221,9 @@ export function HistoryPage() {
   useEffect(() => { fetchProjects(); }, [fetchProjects]);
 
   async function deleteProject(id) {
-    if (!confirm('Bu projeyi silmek istediğinizden emin misiniz?')) return;
+    if (!confirm('Bu projeyi ve tüm varyasyonlarını silmek istediğinizden emin misiniz?')) return;
     await supabase.from('projects').delete().eq('id', id);
-    setProjects(p => p.filter(x => x.id !== id));
+    setProjects(p => p.filter(x => x.id !== id && x.parent_project_id !== id));
   }
 
   function viewProject(project) {
@@ -219,82 +231,89 @@ export function HistoryPage() {
     navigate(`/hesaplama/${project.id}`);
   }
 
-  // Group: roots + revision children
-  const { roots, childrenOf } = useMemo(() => {
-    const roots = [], childrenOf = {};
-    projects.forEach(p => {
-      if (!p.parent_project_id) {
-        roots.push(p);
-      } else {
-        (childrenOf[p.parent_project_id] ??= []).push(p);
-      }
-    });
-    // Orphan revisions (parent deleted) → show as roots too
-    projects.forEach(p => {
-      if (p.parent_project_id && !projects.find(r => r.id === p.parent_project_id)) {
-        roots.push(p);
-        delete childrenOf[p.parent_project_id];
-      }
-    });
-    return { roots, childrenOf };
-  }, [projects]);
-
-  function handleRevision(project) {
-    const revCount = (childrenOf[project.id] || []).length;
-    startRevision(project, revCount + 1);
+  function handleNewVariant(project) {
+    const varCount = (childrenOf[project.id] || []).length;
+    startRevision(project, varCount + 1);
     navigate('/hesaplama/yeni');
   }
+
+  // Kök projeler + çocuklar
+  const { roots, childrenOf } = useMemo(() => {
+    const roots = [], childrenOf = {};
+    const ids   = new Set(projects.map(p => p.id));
+    projects.forEach(p => {
+      const hasParent = p.parent_project_id && ids.has(p.parent_project_id);
+      if (!hasParent) roots.push(p);
+      else (childrenOf[p.parent_project_id] ??= []).push(p);
+    });
+    // Çocukları eskiden yeniye sırala
+    Object.keys(childrenOf).forEach(k => childrenOf[k].sort((a, b) => new Date(a.created_at) - new Date(b.created_at)));
+    return { roots, childrenOf };
+  }, [projects]);
 
   const filteredRoots = roots.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase()) ||
     (p.building_name || '').toLowerCase().includes(search.toLowerCase())
   );
 
-  // Karşılaştırma modali için verileri hazırla
-  const compareParent   = compareGroup ? projects.find(p => p.id === compareGroup) : null;
-  const compareChildren = compareGroup ? (childrenOf[compareGroup] || []) : [];
+  const compareParent   = compareId ? projects.find(p => p.id === compareId) : null;
+  const compareVariants = compareId ? (childrenOf[compareId] || []) : [];
 
-  function ProjectRow({ p, isRevision = false, revIndex = 0 }) {
-    const revs  = childrenOf[p.id] || [];
-    const isExp = expanded[p.id] ?? true;
-    const total = p.result?.grandTotal;
-    const flats = p.result?.totalFlats;
-    const st    = STATUS_LABEL[p.status] || STATUS_LABEL.draft;
+  // ── Tek satır bileşeni ──────────────────────────────────────────────
+  function ProjectRow({ p, isVariant = false, varIndex = 0 }) {
+    const variants = childrenOf[p.id] || [];
+    const isExp    = expanded[p.id] ?? false;
+    const total    = p.result?.grandTotal;
+    const st       = STATUS_LABEL[p.status] || STATUS_LABEL.draft;
 
     return (
       <>
         <tr style={{
-          background:  isRevision ? 'rgba(99,102,241,0.035)' : undefined,
-          borderLeft:  isRevision ? '3px solid var(--acc)' : undefined,
-          transition:  'background .15s',
+          background:  isVariant ? 'rgba(99,102,241,0.04)' : undefined,
+          borderLeft:  isVariant ? '3px solid var(--acc)' : '3px solid transparent',
         }}>
 
-          {/* Proje adı + R-badge */}
-          <td style={{ paddingLeft: isRevision ? 32 : 14, paddingTop:10, paddingBottom:10 }}>
+          {/* Proje adı sütunu */}
+          <td style={{ paddingLeft: isVariant ? 32 : 12, paddingTop:11, paddingBottom:11 }}>
             <div style={{ display:'flex', alignItems:'center', gap:7 }}>
-              {isRevision && (
-                <span style={{ fontSize:10, fontWeight:800, background:'var(--acc)', color:'#fff', borderRadius:999, padding:'2px 7px', flexShrink:0 }}>
-                  R{revIndex + 1}
+
+              {/* Varyasyon rozeti */}
+              {isVariant && (
+                <span style={{ fontSize:10, fontWeight:800, background:'var(--acc)', color:'#fff', borderRadius:999, padding:'2px 8px', flexShrink:0, letterSpacing:'.2px' }}>
+                  V{varIndex + 1}
                 </span>
               )}
-              {!isRevision && revs.length > 0 && (
+
+              {/* Accordion toggle — sadece kök projede */}
+              {!isVariant && variants.length > 0 && (
                 <button
                   onClick={() => setExpanded(e => ({ ...e, [p.id]: !isExp }))}
-                  style={{ background:'none', border:'none', cursor:'pointer', fontSize:13, color:'var(--acc)', padding:'0 2px', lineHeight:1, flexShrink:0 }}
-                  title={isExp ? 'Revizyonları gizle' : 'Revizyonları göster'}
+                  style={{ background:'none', border:'none', cursor:'pointer', fontSize:14, color:'var(--acc)', padding:'0 2px', lineHeight:1, flexShrink:0 }}
+                  title={isExp ? 'Varyasyonları gizle' : 'Varyasyonları göster'}
                 >
                   {isExp ? '▾' : '▸'}
                 </button>
               )}
-              <span style={{ fontWeight:600, fontSize: isRevision ? 12 : 13 }}>{p.name}</span>
-              {!isRevision && revs.length > 0 && (
-                <span style={{ fontSize:10, background:'rgba(99,102,241,0.12)', color:'var(--acc)', borderRadius:999, padding:'1px 7px', fontWeight:800 }}>
-                  {revs.length} rev
+              {!isVariant && variants.length === 0 && (
+                <span style={{ display:'inline-block', width:18 }} />
+              )}
+
+              <span style={{ fontWeight:600, fontSize: isVariant ? 12 : 13, color: isVariant ? 'var(--muted)' : 'var(--text)' }}>
+                {/* Varyasyon adında parent adını kısalt */}
+                {isVariant ? (p.name.replace(new RegExp(`^${compareParent?.name || ''}\\s*—\\s*`), '') || p.name) : p.name}
+              </span>
+
+              {/* Kaç varyasyon var rozeti */}
+              {!isVariant && variants.length > 0 && (
+                <span style={{ fontSize:10, background:'rgba(99,102,241,0.12)', color:'var(--acc)', borderRadius:999, padding:'1px 7px', fontWeight:800, flexShrink:0 }}>
+                  {variants.length} varyasyon
                 </span>
               )}
             </div>
             {p.building_name && (
-              <div style={{ fontSize:11, color:'var(--muted)', marginTop:1 }}>{p.building_name}</div>
+              <div style={{ fontSize:11, color:'var(--muted)', marginTop:2, paddingLeft: isVariant ? 0 : 20 }}>
+                {p.building_name}
+              </div>
             )}
           </td>
 
@@ -306,13 +325,13 @@ export function HistoryPage() {
           </td>
 
           {/* Toplam */}
-          <td style={{ textAlign:'right', fontFamily:'var(--mono)', color:'var(--acc)', fontWeight:700, fontSize: isRevision ? 12 : 13 }}>
+          <td style={{ textAlign:'right', fontFamily:'var(--mono)', color:'var(--acc)', fontWeight:700, fontSize: isVariant ? 12 : 13 }}>
             {total != null ? `${TR(total)} ₺` : '—'}
           </td>
 
           {/* Daire */}
           <td style={{ textAlign:'right', fontFamily:'var(--mono)', fontSize:12, color:'var(--muted)' }}>
-            {flats ?? '—'}
+            {p.result?.totalFlats ?? '—'}
           </td>
 
           {/* Tarih */}
@@ -323,29 +342,36 @@ export function HistoryPage() {
           {/* Eylemler */}
           <td style={{ paddingRight:10 }}>
             <div style={{ display:'flex', gap:4, flexWrap:'nowrap', justifyContent:'flex-end' }}>
+
               <button onClick={() => viewProject(p)}
-                style={{ background:'var(--acc)', color:'#fff', border:'none', borderRadius:999, padding:'4px 10px', fontSize:11, cursor:'pointer', fontWeight:700, whiteSpace:'nowrap' }}>
+                style={{ background:'var(--acc)', color:'#fff', border:'none', borderRadius:999, padding:'4px 10px', fontSize:11, cursor:'pointer', fontWeight:700 }}>
                 Görüntüle
               </button>
-              {!isRevision && (
-                <button onClick={() => handleRevision(p)}
-                  style={{ background:'var(--bg)', color:'var(--text)', border:'1px solid var(--border)', borderRadius:999, padding:'4px 10px', fontSize:11, cursor:'pointer', whiteSpace:'nowrap' }}
-                  title="Bu projeyi temel alarak yeni revizyon başlat">
-                  ↻ Revizyon Yap
+
+              {/* Yeni varyasyon — sadece kök projede */}
+              {!isVariant && (
+                <button onClick={() => handleNewVariant(p)}
+                  style={{ background:'var(--bg)', color:'var(--acc)', border:'1px solid rgba(99,102,241,0.35)', borderRadius:999, padding:'4px 10px', fontSize:11, cursor:'pointer', fontWeight:700 }}
+                  title="Bu projeyi temel alarak yeni varyasyon başlat">
+                  ⊕ Yeni Varyasyon
                 </button>
               )}
-              {!isRevision && revs.length > 0 && (
-                <button onClick={() => setCompareGroup(p.id)}
-                  style={{ background:'rgba(99,102,241,0.1)', color:'var(--acc)', border:'1px solid rgba(99,102,241,0.25)', borderRadius:999, padding:'4px 10px', fontSize:11, cursor:'pointer', fontWeight:700, whiteSpace:'nowrap' }}>
+
+              {/* Karşılaştır — sadece varyasyonu olan kök projede */}
+              {!isVariant && variants.length > 0 && (
+                <button onClick={() => { setCompareId(p.id); setExpanded(e => ({ ...e, [p.id]: true })); }}
+                  style={{ background:'rgba(99,102,241,0.1)', color:'var(--acc)', border:'1px solid rgba(99,102,241,0.25)', borderRadius:999, padding:'4px 10px', fontSize:11, cursor:'pointer', fontWeight:700 }}>
                   ⇌ Karşılaştır
                 </button>
               )}
+
               {admin && (
                 <button onClick={() => { editProject(p); navigate(`/hesaplama/${p.id}`); }}
-                  style={{ background:'var(--warn-bg,#fff8e1)', color:'var(--warn,#b45309)', border:'1px solid var(--warn-b,#fde68a)', borderRadius:999, padding:'4px 10px', fontSize:11, cursor:'pointer', whiteSpace:'nowrap' }}>
+                  style={{ background:'var(--warn-bg,#fff8e1)', color:'var(--warn,#b45309)', border:'1px solid var(--warn-b,#fde68a)', borderRadius:999, padding:'4px 10px', fontSize:11, cursor:'pointer' }}>
                   ✏ Düzenle
                 </button>
               )}
+
               {admin && (
                 <button onClick={() => deleteProject(p.id)}
                   style={{ background:'var(--bg)', color:'var(--red)', border:'1px solid var(--border)', borderRadius:999, padding:'4px 10px', fontSize:11, cursor:'pointer' }}>
@@ -356,9 +382,9 @@ export function HistoryPage() {
           </td>
         </tr>
 
-        {/* Revizyonlar — genişletilmiş */}
-        {isExp && revs.map((rev, ri) => (
-          <ProjectRow key={rev.id} p={rev} isRevision revIndex={ri} />
+        {/* Varyasyon alt satırları */}
+        {isExp && variants.map((v, vi) => (
+          <ProjectRow key={v.id} p={v} isVariant varIndex={vi} />
         ))}
       </>
     );
@@ -368,7 +394,7 @@ export function HistoryPage() {
     <div>
       <div style={{ marginBottom:24 }}>
         <h1 style={{ fontSize:22, fontWeight:800, marginBottom:5 }}>Proje Geçmişi</h1>
-        <p style={{ color:'var(--muted)', fontSize:13 }}>Kaydedilmiş tüm hesaplamalar ve revizyonlar.</p>
+        <p style={{ color:'var(--muted)', fontSize:13 }}>Kaydedilmiş hesaplamalar ve varyasyonlar.</p>
       </div>
 
       {/* Araç çubuğu */}
@@ -399,13 +425,13 @@ export function HistoryPage() {
         ) : (
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
             <thead>
-              <tr style={{ borderBottom:'1px solid var(--border)' }}>
-                <th style={{ textAlign:'left', paddingLeft:14, paddingTop:10, paddingBottom:10 }}>Proje Adı</th>
-                <th style={{ textAlign:'left' }}>Durum</th>
-                <th style={{ textAlign:'right' }}>Toplam (KDV Dahil)</th>
-                <th style={{ textAlign:'right' }}>Daire</th>
-                <th style={{ textAlign:'left' }}>Tarih</th>
-                <th style={{ textAlign:'right', paddingRight:10 }}>İşlemler</th>
+              <tr style={{ borderBottom:'1px solid var(--border)', background:'var(--bg)' }}>
+                <th style={{ textAlign:'left', paddingLeft:12, paddingTop:10, paddingBottom:10, fontWeight:700, fontSize:11, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.4px' }}>Proje Adı</th>
+                <th style={{ textAlign:'left', fontWeight:700, fontSize:11, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.4px' }}>Durum</th>
+                <th style={{ textAlign:'right', fontWeight:700, fontSize:11, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.4px' }}>Toplam (KDV Dahil)</th>
+                <th style={{ textAlign:'right', fontWeight:700, fontSize:11, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.4px' }}>Daire</th>
+                <th style={{ fontWeight:700, fontSize:11, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.4px' }}>Tarih</th>
+                <th style={{ textAlign:'right', paddingRight:10, fontWeight:700, fontSize:11, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.4px' }}>İşlemler</th>
               </tr>
             </thead>
             <tbody>
@@ -423,12 +449,12 @@ export function HistoryPage() {
         </div>
       )}
 
-      {/* Revizyon karşılaştırma modali — sadece aynı projenin revizyonları */}
-      {compareGroup && compareParent && compareChildren.length > 0 && (
-        <RevisionCompareModal
+      {/* Varyasyon karşılaştırma modali */}
+      {compareId && compareParent && (
+        <VaryasyonCompareModal
           parent={compareParent}
-          revisions={compareChildren}
-          onClose={() => setCompareGroup(null)}
+          variants={compareVariants}
+          onClose={() => setCompareId(null)}
         />
       )}
     </div>
