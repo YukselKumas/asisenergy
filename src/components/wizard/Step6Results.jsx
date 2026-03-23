@@ -302,7 +302,7 @@ export function Step6Results({ goStep }) {
                   style={{ flex:1, minWidth:220, padding:'8px 14px', border:'1px solid var(--border)', borderRadius:'var(--r)', fontSize:13, fontFamily:'var(--sans)', outline:'none', background:'var(--white)' }}
                   onKeyDown={e => e.key === 'Enter' && handleSave()}
                 />
-                <Button variant="primary" onClick={handleSave} disabled={saving}>
+                <Button variant="primary" onClick={() => handleSave()} disabled={saving}>
                   {saving ? 'Kaydediliyor…' : '💾 Kaydet'}
                 </Button>
                 <Button variant="default" onClick={() => setShowSave(false)}>İptal</Button>
