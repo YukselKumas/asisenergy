@@ -45,14 +45,18 @@ export function Step1System({ goStep }) {
 
   function upd(key, val)  { setConfig({ [key]: val }); }
   function updN(key, val) {
+    if (val === '' || val === null) { setConfig({ [key]: '' }); return; }
     const n = parseFloat(val);
     if (!isNaN(n)) setConfig({ [key]: n });
-    // NaN ise (örn: yazım ortasında "-") güncelleme yapma, tarayıcı ara değeri göstersin
   }
   function updInt(key, val) {
+    if (val === '' || val === null) { setConfig({ [key]: '' }); return; }
     const n = parseInt(val, 10);
     if (!isNaN(n)) setConfig({ [key]: n });
   }
+
+  // Bina bilgileri dolu mu kontrolü
+  const binaEksik = !c.floor || !c.flatcheck || !c.floorH || !c.shaft;
 
   return (
     <div>
@@ -157,13 +161,22 @@ export function Step1System({ goStep }) {
       </Card>
 
       {/* Bina Bilgileri */}
-      <Card accent="acc" title="Bina Bilgileri" badge="2">
+      <Card accent={binaEksik ? 'warn' : 'acc'} title="Bina Bilgileri" badge="2">
+        {binaEksik && (
+          <div style={{ fontSize:12, color:'var(--warn)', background:'rgba(251,191,36,0.1)', border:'1px solid rgba(251,191,36,0.3)', borderRadius:'var(--r3)', padding:'8px 12px', marginBottom:14 }}>
+            ⚠ Bu alanlar doldurulmadan 2. adıma geçilemez.
+          </div>
+        )}
         <div className="g g4">
           <Field label="Kat Sayısı" hint="Dairelerin toplam kat adedi (max 250)">
-            <input type="number" value={c.floor} min="1" max="250" onChange={e => updN('floor', e.target.value)} />
+            <input type="number" value={c.floor} min="1" max="250" placeholder="örn: 10"
+              style={{ borderColor: !c.floor ? 'var(--warn)' : undefined }}
+              onChange={e => updN('floor', e.target.value)} />
           </Field>
           <Field label="Toplam Daire Sayısı" hint="Katlara otomatik dağıtılır">
-            <input type="number" value={c.flatcheck} min="0" onChange={e => updN('flatcheck', e.target.value)} />
+            <input type="number" value={c.flatcheck} min="1" placeholder="örn: 40"
+              style={{ borderColor: !c.flatcheck ? 'var(--warn)' : undefined }}
+              onChange={e => updN('flatcheck', e.target.value)} />
           </Field>
           <Field label="Şaft Başlangıç Katı" hint="Mekanik oda / kolektör bulunduğu kat">
             <FloorStepper value={c.shaftFloor ?? 1} onChange={v => upd('shaftFloor', v)} />
@@ -172,10 +185,14 @@ export function Step1System({ goStep }) {
             <FloorStepper value={c.firstFloor} onChange={v => upd('firstFloor', v)} />
           </Field>
           <Field label="Kat Yüksekliği (m)" hint="Dikey boru hesabında kullanılır">
-            <input type="number" value={c.floorH} min="1" step="0.1" onChange={e => updN('floorH', e.target.value)} />
+            <input type="number" value={c.floorH} min="1" step="0.1" placeholder="örn: 3.0"
+              style={{ borderColor: !c.floorH ? 'var(--warn)' : undefined }}
+              onChange={e => updN('floorH', e.target.value)} />
           </Field>
           <Field label="Şaft Sayısı" hint="Kolektör çıkış adedine eşit">
-            <input type="number" value={c.shaft} min="1" onChange={e => updN('shaft', e.target.value)} />
+            <input type="number" value={c.shaft} min="1" placeholder="örn: 4"
+              style={{ borderColor: !c.shaft ? 'var(--warn)' : undefined }}
+              onChange={e => updN('shaft', e.target.value)} />
           </Field>
         </div>
       </Card>

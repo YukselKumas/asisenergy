@@ -1,222 +1,181 @@
-// ── RevisionBar — Revizyon Yönetimi ──────────────────────────────────
-// Aynı bina, farklı marka kombinasyonları = farklı fiyat teklifleri.
-// Revizyonlar arasında geçiş, klonlama ve silme işlemleri burada yapılır.
+// ── RevisionBar — Revizyon Yönetimi (R1, R2, R3…) ─────────────────────
+// Hesaplandıktan sonra "R1 Kaydet" butonu ile anlık sonuç revizyona alınır.
+// Revizyonlar listelenip karşılaştırılabilir.
 
-import { useState } from 'react';
 import { useCalculationStore } from '../../store/calculationStore.js';
 import { useDefinitionsStore }  from '../../store/definitionsStore.js';
-import { GlassSelect } from '../ui/GlassSelect.jsx';
-import { Button }      from '../ui/Button.jsx';
 import { showToast }   from '../ui/Toast.jsx';
 
-const BRAND_CATS = [
-  { key: 'markaPpr',     label: 'PPR Boru & Bağlantı', cat: 'ppr'    },
-  { key: 'markaPirince', label: 'Pirinç Küresel Vana',  cat: 'valve'  },
-  { key: 'markaBd',      label: 'Basınç Düşürücü',      cat: 'bd'     },
-  { key: 'markaFiltre',  label: 'Filtre & Çekvalf',     cat: 'filter' },
-];
+const TR = (x) => new Intl.NumberFormat('tr-TR', { minimumFractionDigits:0, maximumFractionDigits:0 }).format(x ?? 0);
 
 export function RevisionBar() {
   const {
-    config, revisions, activeRevId,
-    saveAsRevision, cloneRevision, switchRevision, deleteRevision, loadBrandPrices,
+    result, revisions, activeRevId,
+    saveCurrentAsRevision, deleteRevision, setActiveRevId,
   } = useCalculationStore();
   const { brands } = useDefinitionsStore();
 
-  const [mode,       setMode]       = useState(null);    // 'save' | 'clone' | null
-  const [revName,    setRevName]    = useState('');
-  const [cloneBrands, setCloneBrands] = useState({
-    markaPpr: '', markaPirince: '', markaBd: '', markaFiltre: '',
-  });
-
-  // Mevcut markadan isim türet
   function brandName(id) {
-    if (!id) return '?';
-    return brands.find(b => b.id === id)?.name || '?';
+    if (!id) return '—';
+    return brands.find(b => b.id === id)?.name || '—';
   }
 
-  function activeRev() {
-    return revisions.find(r => r.id === activeRevId) || null;
+  function handleSaveRevision() {
+    if (!result) { showToast('⚠ Önce hesaplama yapın.'); return; }
+    const rev = saveCurrentAsRevision();
+    if (rev) showToast(`✓ ${rev.name} kaydedildi`);
   }
 
-  // ── Kaydet ──────────────────────────────────────────────────────
-  function handleSave() {
-    if (!revName.trim()) { showToast('⚠ Revizyon adı boş olamaz.'); return; }
-    if (!config.markaPpr) { showToast('⚠ Önce Adım 1\'de markalar seçilmeli.'); return; }
-    saveAsRevision(revName.trim());
-    showToast(`✓ "${revName.trim()}" revizyonu kaydedildi.`);
-    setMode(null);
-    setRevName('');
-  }
-
-  // ── Klonla ──────────────────────────────────────────────────────
-  async function handleClone() {
-    if (!revName.trim()) { showToast('⚠ Revizyon adı boş olamaz.'); return; }
-    const missing = BRAND_CATS.find(b => !cloneBrands[b.key]);
-    if (missing) { showToast(`⚠ ${missing.label} markası seçilmemiş.`); return; }
-
-    const id = cloneRevision(revName.trim(), cloneBrands);
-
-    // Yeni markaların fiyatlarını yükle
-    for (const { key, cat } of BRAND_CATS) {
-      await loadBrandPrices(cat, cloneBrands[key]);
-    }
-    showToast(`✓ "${revName.trim()}" revizyonu oluşturuldu. Adım 1'e dönerek markaları kontrol edin.`);
-    setMode(null);
-    setRevName('');
-    setCloneBrands({ markaPpr: '', markaPirince: '', markaBd: '', markaFiltre: '' });
-  }
-
-  // ── Revizyona geç ───────────────────────────────────────────────
-  async function handleSwitch(id) {
-    switchRevision(id);
-    const rev = revisions.find(r => r.id === id);
-    if (rev) {
-      for (const { key, cat } of BRAND_CATS) {
-        if (rev.brands[key]) await loadBrandPrices(cat, rev.brands[key]);
-      }
-      showToast(`↻ "${rev.name}" revizyonuna geçildi.`);
-    }
-  }
-
-  const hasRevisions = revisions.length > 0;
-  const cur = activeRev();
+  const nextRevName = `R${revisions.length + 1}`;
 
   return (
     <div style={{ marginBottom: 16 }}>
 
-      {/* Revizyon şeridi */}
+      {/* Başlık şeridi */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap',
-        padding: '8px 12px',
-        background: hasRevisions ? 'var(--green-bg)' : 'var(--bg)',
-        border: `1px solid ${hasRevisions ? 'var(--green-b)' : 'var(--border)'}`,
+        display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
+        padding: '10px 14px',
+        background: revisions.length > 0 ? 'rgba(16,185,129,0.07)' : 'var(--bg)',
+        border: `1px solid ${revisions.length > 0 ? 'var(--green-b,#6ee7b7)' : 'var(--border)'}`,
         borderRadius: 'var(--r)',
       }}>
-
-        {/* Etiket */}
-        <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '.4px', flexShrink: 0 }}>
+        <span style={{ fontSize:11, fontWeight:800, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.4px', flexShrink:0 }}>
           Revizyonlar
         </span>
 
-        {/* Revizyon sekmeleri */}
+        {revisions.length === 0 && (
+          <span style={{ fontSize:11, color:'var(--muted)', fontStyle:'italic' }}>
+            Henüz revizyon yok — hesapladıktan sonra kaydedin.
+          </span>
+        )}
+
+        {/* R1, R2… sekmeler */}
         {revisions.map(rev => (
           <button
             key={rev.id}
-            onClick={() => rev.id !== activeRevId && handleSwitch(rev.id)}
+            onClick={() => setActiveRevId(rev.id === activeRevId ? null : rev.id)}
             style={{
-              padding: '4px 12px', borderRadius: 'var(--r2)', fontSize: 12, fontWeight: 600,
-              cursor: rev.id === activeRevId ? 'default' : 'pointer',
+              padding: '4px 12px', borderRadius: 'var(--r2)', fontSize: 12, fontWeight: 700,
+              cursor: 'pointer',
               background: rev.id === activeRevId ? 'var(--acc)' : 'var(--white)',
               color:      rev.id === activeRevId ? '#fff' : 'var(--text)',
-              border: `1px solid ${rev.id === activeRevId ? 'var(--acc)' : 'var(--border)'}`,
-              display: 'flex', alignItems: 'center', gap: 6,
+              border: `1.5px solid ${rev.id === activeRevId ? 'var(--acc)' : 'var(--border)'}`,
+              display: 'flex', alignItems: 'center', gap: 5,
             }}
           >
-            {rev.id === activeRevId && <span style={{ fontSize: 10 }}>●</span>}
             {rev.name}
-            {rev.result && <span style={{ fontSize: 10, opacity: .7 }}>✓</span>}
-            {rev.id !== activeRevId && (
-              <span
-                onClick={e => { e.stopPropagation(); if (confirm(`"${rev.name}" silinsin mi?`)) deleteRevision(rev.id); }}
-                style={{ marginLeft: 2, opacity: .5, fontSize: 12, cursor: 'pointer' }}
-                title="Sil"
-              >×</span>
-            )}
+            <span style={{ fontSize:10, opacity:.65 }}>
+              {rev.result?.grandTotal ? `${TR(rev.result.grandTotal)} ₺` : '?'}
+            </span>
+            <span
+              onClick={e => {
+                e.stopPropagation();
+                if (confirm(`"${rev.name}" silinsin mi?`)) deleteRevision(rev.id);
+              }}
+              style={{ marginLeft:2, opacity:.45, fontSize:13, cursor:'pointer', lineHeight:1 }}
+              title="Sil"
+            >×</span>
           </button>
         ))}
 
-        {/* Aktif revizyon yok / marka özeti */}
-        {!cur && (
-          <span style={{ fontSize: 11, color: 'var(--muted)', fontStyle: 'italic' }}>
-            {hasRevisions ? 'Aktif revizyon seçilmedi' : 'Henüz revizyon yok'}
-          </span>
-        )}
-        {cur && (
-          <span style={{ fontSize: 11, color: 'var(--muted)' }}>
-            PPR: {brandName(cur.brands.markaPpr)} · Vana: {brandName(cur.brands.markaPirince)}
-          </span>
-        )}
-
-        {/* Eylem butonları */}
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
-          <Button
-            variant="default"
-            style={{ padding: '3px 10px', fontSize: 11 }}
-            onClick={() => { setMode('save'); setRevName(cur?.name || `Revizyon ${revisions.length + 1}`); }}
-          >
-            💾 Kaydet
-          </Button>
-          <Button
-            variant="default"
-            style={{ padding: '3px 10px', fontSize: 11 }}
-            onClick={() => {
-              setMode('clone');
-              setRevName(`${cur?.name || 'Revizyon'} Kopyası`);
-              setCloneBrands({ markaPpr: '', markaPirince: '', markaBd: '', markaFiltre: '' });
+        {/* Kaydet butonu */}
+        <div style={{ marginLeft:'auto' }}>
+          <button
+            onClick={handleSaveRevision}
+            disabled={!result}
+            style={{
+              background: result ? 'var(--acc)' : 'var(--bg)',
+              color: result ? '#fff' : 'var(--muted)',
+              border: `1px solid ${result ? 'var(--acc)' : 'var(--border)'}`,
+              borderRadius: 'var(--r2)', padding: '5px 14px', fontSize: 12,
+              fontWeight: 700, cursor: result ? 'pointer' : 'default',
             }}
           >
-            + Klonla
-          </Button>
+            + {nextRevName} Kaydet
+          </button>
         </div>
       </div>
 
-      {/* Kaydet paneli */}
-      {mode === 'save' && (
-        <div style={{ marginTop: 6, padding: '12px 14px', background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 'var(--r)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 12, fontWeight: 600, flexShrink: 0 }}>Revizyon adı:</span>
-          <input
-            value={revName}
-            onChange={e => setRevName(e.target.value)}
-            placeholder="örn: Kalde Teklifi"
-            style={{ flex: 1, minWidth: 180, padding: '6px 12px', border: '1px solid var(--border)', borderRadius: 'var(--r2)', fontSize: 13, fontFamily: 'var(--sans)', outline: 'none' }}
-            onKeyDown={e => e.key === 'Enter' && handleSave()}
-          />
-          <span style={{ fontSize: 11, color: 'var(--muted)' }}>
-            Mevcut markalar: PPR={brandName(config.markaPpr)} · Vana={brandName(config.markaPirince)}
-          </span>
-          <Button variant="primary" style={{ padding: '5px 14px', fontSize: 12 }} onClick={handleSave}>Kaydet</Button>
-          <Button variant="default" style={{ padding: '5px 10px', fontSize: 12 }} onClick={() => setMode(null)}>İptal</Button>
-        </div>
-      )}
+      {/* Aktif revizyon detayı */}
+      {activeRevId && (() => {
+        const rev = revisions.find(r => r.id === activeRevId);
+        if (!rev) return null;
+        const cur = result;
+        const pct = (a, b) => b ? (((a - b) / b) * 100).toFixed(1) : null;
+        return (
+          <div style={{
+            marginTop: 6, padding:'14px 16px',
+            background:'var(--white)', border:'1px solid var(--border)',
+            borderRadius:'var(--r)', display:'flex', flexWrap:'wrap', gap:16,
+          }}>
+            <div style={{ fontSize:11, fontWeight:800, textTransform:'uppercase', letterSpacing:'.4px', color:'var(--acc)', width:'100%' }}>
+              {rev.name} — Detay
+            </div>
 
-      {/* Klonla paneli */}
-      {mode === 'clone' && (
-        <div style={{ marginTop: 6, padding: '14px 16px', background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 'var(--r)' }}>
-          <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10, color: 'var(--acc)' }}>
-            + Yeni Revizyon — farklı markalarla klonla
-          </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 12, fontWeight: 600, flexShrink: 0 }}>Revizyon adı:</span>
-            <input
-              value={revName}
-              onChange={e => setRevName(e.target.value)}
-              placeholder="örn: Wavin Teklifi"
-              style={{ flex: 1, minWidth: 180, padding: '6px 12px', border: '1px solid var(--border)', borderRadius: 'var(--r2)', fontSize: 13, fontFamily: 'var(--sans)', outline: 'none' }}
-            />
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 8, marginBottom: 12 }}>
-            {BRAND_CATS.map(({ key, label, cat }) => (
-              <div key={key}>
-                <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted)', marginBottom: 4 }}>{label}</div>
-                <GlassSelect
-                  value={cloneBrands[key]}
-                  onChange={e => setCloneBrands(prev => ({ ...prev, [key]: e.target.value }))}
-                >
-                  <option value="">— Marka seçin —</option>
-                  {brands.filter(b => b.category === cat).map(b => (
-                    <option key={b.id} value={b.id}>{b.name}</option>
-                  ))}
-                </GlassSelect>
+            {/* Marka özeti */}
+            <div style={{ fontSize:11, color:'var(--muted)', lineHeight:1.9 }}>
+              <div><strong>PPR:</strong> {brandName(rev.brands?.markaPpr)}</div>
+              <div><strong>Vana:</strong> {brandName(rev.brands?.markaPirince)}</div>
+              <div><strong>BD:</strong> {brandName(rev.brands?.markaBd)}</div>
+              <div><strong>Filtre:</strong> {brandName(rev.brands?.markaFiltre)}</div>
+            </div>
+
+            {/* Fiyat karşılaştırma */}
+            {rev.result && cur && (
+              <div style={{ flex:1, minWidth:220 }}>
+                <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign:'left', fontSize:10, color:'var(--muted)', fontWeight:700, textTransform:'uppercase', paddingBottom:6 }}>Metrik</th>
+                      <th style={{ textAlign:'right', fontSize:10, color:'var(--acc)', fontWeight:700, textTransform:'uppercase', paddingBottom:6 }}>{rev.name}</th>
+                      <th style={{ textAlign:'right', fontSize:10, color:'var(--muted)', fontWeight:700, textTransform:'uppercase', paddingBottom:6 }}>Mevcut</th>
+                      <th style={{ textAlign:'right', fontSize:10, color:'var(--muted)', fontWeight:700, textTransform:'uppercase', paddingBottom:6 }}>Fark</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      ['KDV Dahil', rev.result.grandTotal, cur.grandTotal, '₺'],
+                      ['KDV Hariç', rev.result.grandNet,   cur.grandNet,   '₺'],
+                      ['Toplam Boru', rev.result.totalPipe, cur.totalPipe, 'm'],
+                    ].map(([label, rv, cv, unit]) => {
+                      const diff = rv != null && cv != null ? rv - cv : null;
+                      const p = pct(rv, cv);
+                      return (
+                        <tr key={label} style={{ borderTop:'1px solid var(--border)' }}>
+                          <td style={{ padding:'5px 4px 5px 0', color:'var(--muted)', fontSize:11 }}>{label}</td>
+                          <td style={{ padding:'5px 4px', textAlign:'right', fontFamily:'var(--mono)', fontWeight:700 }}>
+                            {rv != null ? `${TR(rv)} ${unit}` : '—'}
+                          </td>
+                          <td style={{ padding:'5px 4px', textAlign:'right', fontFamily:'var(--mono)', color:'var(--muted)' }}>
+                            {cv != null ? `${TR(cv)} ${unit}` : '—'}
+                          </td>
+                          <td style={{ padding:'5px 0 5px 4px', textAlign:'right', fontFamily:'var(--mono)', fontSize:11, fontWeight:700,
+                            color: diff === null ? 'var(--muted)' : diff < 0 ? 'var(--green)' : diff > 0 ? 'var(--red)' : 'var(--muted)' }}>
+                            {diff === null ? '—' : diff === 0 ? '=' : `${diff > 0 ? '+' : ''}${TR(diff)}`}
+                            {p !== null && diff !== 0 ? <span style={{ fontSize:10, marginLeft:3, opacity:.7 }}>({p}%)</span> : null}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-            ))}
+            )}
+
+            {/* Sadece revizyon sonucu var, mevcut hesap yok */}
+            {rev.result && !cur && (
+              <div style={{ fontSize:12, fontFamily:'var(--mono)', color:'var(--acc)' }}>
+                KDV Dahil: <strong>{TR(rev.result.grandTotal)} ₺</strong>
+                {' · '}KDV Hariç: <strong>{TR(rev.result.grandNet)} ₺</strong>
+              </div>
+            )}
+
+            <div style={{ fontSize:10, color:'var(--muted)', width:'100%' }}>
+              Kaydedildi: {new Date(rev.createdAt).toLocaleString('tr-TR')}
+            </div>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button variant="primary" style={{ padding: '6px 16px', fontSize: 12 }} onClick={handleClone}>Revizyonu Oluştur</Button>
-            <Button variant="default" style={{ padding: '6px 12px', fontSize: 12 }} onClick={() => setMode(null)}>İptal</Button>
-          </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

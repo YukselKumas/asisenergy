@@ -126,7 +126,7 @@ export function HistoryPage() {
   const [search,      setSearch]      = useState('');
   const [loading,     setLoading]     = useState(true);
   const [fetchError,  setFetchError]  = useState(null);
-  const [expanded,    setExpanded]    = useState({});   // parentId → bool
+  const [expanded,    setExpanded]    = useState({});   // parentId → bool (undefined = açık)
   const [selected,    setSelected]    = useState([]);   // max 2 items for comparison
   const [compareOpen, setCompareOpen] = useState(false);
 
@@ -168,7 +168,8 @@ export function HistoryPage() {
   }
 
   function handleRevision(project) {
-    startRevision(project);
+    const revCount = (childrenOf[project.id] || []).length;
+    startRevision(project, revCount + 1);
     navigate('/hesaplama/yeni');
   }
 
@@ -208,19 +209,23 @@ export function HistoryPage() {
 
   const isSelected = (id) => selected.some(x => x.id === id);
 
-  function ProjectRow({ p, isRevision = false }) {
+  function ProjectRow({ p, isRevision = false, revIndex = 0 }) {
     const revs = childrenOf[p.id] || [];
-    const isExp = expanded[p.id];
+    const isExp = expanded[p.id] ?? true; // varsayılan açık
     const total = p.result?.grandTotal;
     const flats = p.result?.totalFlats;
     const st    = STATUS_LABEL[p.status] || STATUS_LABEL.draft;
     const sel   = isSelected(p.id);
+    const revLabel = `R${revIndex + 1}`;
 
     return (
       <>
-        <tr style={{ background: isRevision ? 'rgba(0,128,180,0.03)' : undefined }}>
+        <tr style={{
+          background: isRevision ? 'rgba(99,102,241,0.04)' : undefined,
+          borderLeft: isRevision ? '3px solid var(--acc)' : undefined,
+        }}>
           {/* Seçim kutusu */}
-          <td style={{ width: 36, textAlign: 'center', paddingLeft: isRevision ? 28 : 8 }}>
+          <td style={{ width: 36, textAlign: 'center', paddingLeft: isRevision ? 32 : 8 }}>
             <input
               type="checkbox"
               checked={sel}
@@ -233,7 +238,9 @@ export function HistoryPage() {
           <td>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               {isRevision && (
-                <span style={{ color: 'var(--muted)', fontSize: 13, userSelect: 'none' }}>↳</span>
+                <span style={{ color:'var(--acc)', fontSize:11, fontWeight:800, background:'rgba(99,102,241,0.1)', borderRadius:999, padding:'1px 7px', flexShrink:0 }}>
+                  {revLabel}
+                </span>
               )}
               {!isRevision && revs.length > 0 && (
                 <button
@@ -252,7 +259,7 @@ export function HistoryPage() {
               )}
             </div>
             {p.building_name && (
-              <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1, paddingLeft: isRevision ? 14 : 0 }}>{p.building_name}</div>
+              <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 1, paddingLeft: isRevision ? 0 : 0 }}>{p.building_name}</div>
             )}
           </td>
 
@@ -316,8 +323,8 @@ export function HistoryPage() {
         </tr>
 
         {/* Revizyonlar — genişletilmiş */}
-        {isExp && revs.map(rev => (
-          <ProjectRow key={rev.id} p={rev} isRevision />
+        {isExp && revs.map((rev, ri) => (
+          <ProjectRow key={rev.id} p={rev} isRevision revIndex={ri} />
         ))}
       </>
     );

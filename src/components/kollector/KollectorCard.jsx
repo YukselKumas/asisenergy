@@ -16,16 +16,20 @@ const HAT_CONFIG = {
   cold: { label:'🔵 Soğuk Su Kolektörü',   accent:'var(--cold)' },
 };
 
-export function KollectorCard({ hatId }) {
+export function KollectorCard({ hatId, zoneIdx = 0 }) {
   const { config, setConfig } = useCalculationStore();
   const hat = HAT_CONFIG[hatId];
   const [bulkVd, setBulkVd] = useState('q75');
 
   const kols = config.kolektors || [];
-  const kolIdx = kols.findIndex(k => k.hatId === hatId);
+  const kolIdx = kols.findIndex(k => k.hatId === hatId && (k.zoneIdx ?? 0) === zoneIdx);
+
+  const zoneCount = config.vertZoneCount || 1;
+  const zoneLabel = zoneCount > 1 ? ` — Zone ${zoneIdx + 1}` : '';
 
   const defaultKol = {
     hatId,
+    zoneIdx,
     mat:    'ppr',
     kdiam:  'q90',
     kepAdet: 2,
@@ -40,6 +44,9 @@ export function KollectorCard({ hatId }) {
     else             newKols.push({ ...kol, ...updates });
     setConfig({ kolektors: newKols });
   }
+
+  // Zone etiketini başlıkta göster
+  const cardTitle = `${hat.label}${zoneLabel}`;
 
   function updRow(i, key, val) {
     const newRows = kol.rows.map((r, idx) => idx === i ? { ...r, [key]: val } : r);
@@ -65,7 +72,7 @@ export function KollectorCard({ hatId }) {
       borderLeft:`3px solid ${hat.accent}`, borderRadius:'var(--r)',
     }}>
       <div style={{ fontSize:11, fontWeight:800, letterSpacing:'.5px', textTransform:'uppercase', color:hat.accent, marginBottom:14 }}>
-        {hat.label}
+        {cardTitle}
       </div>
 
       {/* Montaj sırası bilgisi */}

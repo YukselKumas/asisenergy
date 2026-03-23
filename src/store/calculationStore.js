@@ -18,12 +18,12 @@ export const DEFAULT_CONFIG = {
   markaPirince: '',   // Brand UUID
   markaBd:      '',   // Brand UUID
   markaFiltre:  '',   // Brand UUID
-  floor:        10,
-  flatcheck:    40,
+  floor:        '',    // Kullanıcı doldurmadan ilerleme engellenir
+  flatcheck:    '',
   firstFloor:   1,     // Daire başlangıç katı (Step 3 kat tablosu için)
   shaftFloor:   1,     // Şaft / mekanik oda başlangıç katı (boru metrajı için, negatif olabilir)
-  floorH:       4,
-  shaft:        4,
+  floorH:       '',
+  shaft:        '',
 
   // Mekanik oda
   depoAdet:       1,
@@ -121,7 +121,8 @@ export const useCalculationStore = create((set, get) => ({
   isReadOnly:      false,   // true = görüntüleme modu, kayıt/düzenleme engellendi
   isDirty:         false,
   isSaving:        false,
-  revisions:       [],      // (geçmiş uyumluluk için tutulur)
+  revisions:       [],      // [{id, name, brands, result, createdAt}]
+  activeRevId:     null,    // Aktif revizyon ID'si
 
   // ── Config güncelleme ─────────────────────────────────────────────
 
@@ -207,6 +208,7 @@ export const useCalculationStore = create((set, get) => ({
     isReadOnly:      false,
     isDirty:         false,
     revisions:       [],
+    activeRevId:     null,
   }),
 
   /** Kaydedilmiş projeyi yükle — SALT OKUNUR (sadece görüntüleme) */
@@ -219,6 +221,7 @@ export const useCalculationStore = create((set, get) => ({
     isReadOnly:      true,   // Geçmiş'ten açılan proje değiştirilemez
     isDirty:         false,
     revisions:       project.revisions || [],
+    activeRevId:     null,
   }),
 
   /** Projeyi düzenleme modunda yükle — SADECE ADMİN */
@@ -231,45 +234,70 @@ export const useCalculationStore = create((set, get) => ({
     isReadOnly:      false,  // Admin düzenleme modu
     isDirty:         false,
     revisions:       project.revisions || [],
+    activeRevId:     null,
   }),
 
   /**
    * Mevcut bir projeyi temel alarak revizyon başlat.
    * Config kopyalanır, yeni proje olarak kaydedilecek, parent referansı saklanır.
+   * revNumber: otomatik R1, R2, ... numarası
    */
-  startRevision: (project) => set({
+  startRevision: (project, revNumber = 1) => set({
     config:          { ...DEFAULT_CONFIG, ...project.config },
     result:          null,
     projectId:       null,
-    projectName:     `${project.name} — Revizyon`,
+    projectName:     `${project.name} — R${revNumber}`,
     parentProjectId: project.id,
-    isReadOnly:      false,  // Revizyon modunda düzenleme serbest
+    isReadOnly:      false,
     isDirty:         true,
     revisions:       [],
+    activeRevId:     null,
   }),
 
-  // ── Revizyon işlemleri ────────────────────────────────────────────
-  // Revizyon = aynı bina teknik config + farklı marka → farklı fiyat teklifi.
-  // Proje kaydedildikten sonra Step 6 üzerinden eklenir; wizard'ı geçmeye gerek yok.
-
   /**
-   * Yeni revizyon ekle — {name, brands, priceOverride, result} ile çağırılır.
-   * Mevcut ana hesap değişmez; karşılaştırma tablosuna eklenir.
+   * Mevcut hesaplama sonucunu revizyon olarak kaydet (R1, R2, R3…).
+   * Projenin revisions JSONB dizisine eklenir.
    */
-  addRevision: (rev) => {
+  saveCurrentAsRevision: () => {
+    const { result, config, revisions } = get();
+    if (!result) return null;
+    const n = revisions.length + 1;
+    const rev = {
+      id:        `rev_${Date.now()}`,
+      name:      `R${n}`,
+      brands: {
+        markaPpr:     config.markaPpr,
+        markaPirince: config.markaPirince,
+        markaBd:      config.markaBd,
+        markaFiltre:  config.markaFiltre,
+      },
+      result,
+      createdAt: new Date().toISOString(),
+    };
     set(state => ({
-      revisions: [...state.revisions, { ...rev, id: `rev_${Date.now()}`, createdAt: new Date().toISOString() }],
-      isDirty:   true,
+      revisions:   [...state.revisions, rev],
+      activeRevId: rev.id,
+      isDirty:     true,
     }));
+    return rev;
   },
+
+  // ── Revizyon işlemleri ────────────────────────────────────────────
 
   /** Revizyonu sil */
   deleteRevision: (id) => {
-    set(state => ({
-      revisions: state.revisions.filter(r => r.id !== id),
-      isDirty:   true,
-    }));
+    set(state => {
+      const newRevs = state.revisions.filter(r => r.id !== id);
+      // Silinen aktif ise en son revizyona geç
+      const newActive = state.activeRevId === id
+        ? (newRevs.length > 0 ? newRevs[newRevs.length - 1].id : null)
+        : state.activeRevId;
+      return { revisions: newRevs, activeRevId: newActive, isDirty: true };
+    });
   },
+
+  /** Aktif revizyonu değiştir */
+  setActiveRevId: (id) => set({ activeRevId: id }),
 
   // ── Supabase kayıt işlemleri ──────────────────────────────────────
 

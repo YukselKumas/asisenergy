@@ -221,7 +221,18 @@ export const PRICES = [
   /* Sabit ekipmanlar */
   {id:'pump', cat:'mekanik',n:'SİRKÜLASYON POMPASI',             u:'adet', list:10000.00,disc:0},
   {id:'mano', cat:'mekanik',n:'MANOMETRE 100mm 0-10 bar',        u:'adet', list:430.00, disc:0},
+  {id:'term', cat:'mekanik',n:'TERMOMETREsi',                    u:'adet', list:380.00, disc:0},
   {id:'air',  cat:'mekanik',n:'½" OTOMATİK HAVA TAHLİYE',        u:'adet', list:325.00, disc:0},
+  /* Boru Kelepçesi — dikey hat (1.5m'de bir adet) */
+  {id:'kelep20',  cat:'mekanik',n:'Q20 BORU KELEPÇESİ',          u:'adet', list:15.00,  disc:0},
+  {id:'kelep25',  cat:'mekanik',n:'Q25 BORU KELEPÇESİ',          u:'adet', list:18.00,  disc:0},
+  {id:'kelep32',  cat:'mekanik',n:'Q32 BORU KELEPÇESİ',          u:'adet', list:22.00,  disc:0},
+  {id:'kelep40',  cat:'mekanik',n:'Q40 BORU KELEPÇESİ',          u:'adet', list:28.00,  disc:0},
+  {id:'kelep50',  cat:'mekanik',n:'Q50 BORU KELEPÇESİ',          u:'adet', list:36.00,  disc:0},
+  {id:'kelep63',  cat:'mekanik',n:'Q63 BORU KELEPÇESİ',          u:'adet', list:45.00,  disc:0},
+  {id:'kelep75',  cat:'mekanik',n:'Q75 BORU KELEPÇESİ',          u:'adet', list:56.00,  disc:0},
+  {id:'kelep90',  cat:'mekanik',n:'Q90 BORU KELEPÇESİ',          u:'adet', list:72.00,  disc:0},
+  {id:'kelep110', cat:'mekanik',n:'Q110 BORU KELEPÇESİ',         u:'adet', list:95.00,  disc:0},
   /* Basınç Düşürücü */
   {id:'bd-34', cat:'mekanik',n:'¾" BASINÇ DÜŞÜRÜCÜ (DN20)',      u:'adet', list:1850.00,disc:0},
   {id:'bd-1',  cat:'mekanik',n:'1" BASINÇ DÜŞÜRÜCÜ (DN25)',      u:'adet', list:2400.00,disc:0},
