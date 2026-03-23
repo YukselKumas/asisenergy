@@ -107,7 +107,7 @@ export function DashboardPage() {
                 <button
                   onClick={() => toggleExpand(p.id)}
                   style={{ background:'none', border:'none', cursor:'pointer', fontSize:13, color:'var(--acc)', padding:'0 1px', lineHeight:1, flexShrink:0 }}
-                  title={isExp ? 'Revizyonları gizle' : 'Revizyonları göster'}
+                  title={isExp ? 'Varyasyonları gizle' : 'Varyasyonları göster'}
                 >
                   {isExp ? '▾' : '▸'}
                 </button>
@@ -116,10 +116,10 @@ export function DashboardPage() {
                 <span style={{ display:'inline-block', width:16 }} />
               )}
               <span style={{ fontWeight:600, fontSize: isRevision ? 12 : 13 }}>{p.name}</span>
-              {/* Revizyon sayısı rozeti */}
+              {/* Varyasyon sayısı rozeti */}
               {!isRevision && revs.length > 0 && (
                 <span style={{ fontSize:10, background:'rgba(99,102,241,0.12)', color:'var(--acc)', borderRadius:999, padding:'1px 7px', fontWeight:800, flexShrink:0 }}>
-                  {revs.length} rev
+                  {revs.length} varyasyon
                 </span>
               )}
             </div>
@@ -158,7 +158,7 @@ export function DashboardPage() {
           </td>
         </tr>
 
-        {/* Revizyonlar — açıksa göster */}
+        {/* Varyasyonlar — açıksa göster */}
         {isExp && revs.map((rev, ri) => (
           <ProjectRow key={rev.id} p={rev} isRevision revIndex={ri} />
         ))}
