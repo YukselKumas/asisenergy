@@ -32,7 +32,9 @@ export function Step2Pipeline({ goStep }) {
     if (count === 1) {
       next[0] = { ...next[0], to: c.floor || next[0].to, bdTo: c.floor || next[0].bdTo };
     }
-    setConfig({ vertZoneCount: count, zones: next });
+    // Zone sayısı düştüğünde fazla kolektörleri temizle
+    const trimmedKols = (c.kolektors || []).filter(k => (k.zoneIdx ?? 0) < count);
+    setConfig({ vertZoneCount: count, zones: next, kolektors: trimmedKols });
   }
 
   function zonePreview(zone) {
@@ -48,14 +50,16 @@ export function Step2Pipeline({ goStep }) {
 
   return (
     <div>
-      {/* Kolektörler */}
+      {/* Kolektörler — zone başına */}
       <Card accent="acc" title="Mekanik Oda — Kolektörler" badge="Kol.">
         <p style={{ fontSize:12, color:'var(--muted)', marginBottom:14 }}>
-          Her hat için ayrı kolektör. Çıkış adedi ve çaplar bağımsız tanımlanır.
+          Her hat ve zone için ayrı kolektör tanımlanır. Zone sayısı Adım 2 dikey kolon ayarından gelir.
         </p>
-        {['hot','cold'].filter(h => c[h === 'hot' ? 'hasHot' : 'hasCold']).map(h => (
-          <KollectorCard key={h} hatId={h} />
-        ))}
+        {['hot','cold'].filter(h => c[h === 'hot' ? 'hasHot' : 'hasCold']).flatMap(h =>
+          Array.from({ length: c.vertZoneCount || 1 }, (_, zi) => (
+            <KollectorCard key={`${h}-${zi}`} hatId={h} zoneIdx={zi} />
+          ))
+        )}
       </Card>
 
       {/* Yatay Ana Hat */}
@@ -220,16 +224,19 @@ export function Step2Pipeline({ goStep }) {
         ))}
       </Card>
 
-      {/* Sirkülasyon Dikey */}
+      {/* Sirkülasyon Dikey — otomatik hesap */}
       {c.hasCirc && (
         <Card accent="circ" title="Sirkülasyon — Dikey Güzergah" badge="C">
-          <div className="g g3">
-            <Field label="Dikey Uzunluk (m / şaft)" hint="Şaft başından üst kata kadar">
-              <input type="number" value={c.circDikey} min="0" step="0.1" onChange={e => updN('circDikey', e.target.value)} />
-            </Field>
-            <Field label="Daire Başı Bağlantı (m)" hint="Şaft → daire girişi">
-              <input type="number" value={c.circFlat} min="0" step="0.1" onChange={e => updN('circFlat', e.target.value)} />
-            </Field>
+          <div style={{ padding:'12px 14px', background:'var(--bg)', border:'1px solid var(--border)', borderRadius:'var(--r3)', fontSize:13 }}>
+            <span style={{ fontWeight:700, color:'var(--circ)' }}>Otomatik hesaplanıyor:</span>
+            <span style={{ fontFamily:'var(--mono)', marginLeft:8 }}>
+              {c.vertZoneCount || 1} zone × {c.floorH || 4} m/kat × {c.floor || 0} kat
+              {' = '}
+              <strong>{((c.vertZoneCount || 1) * (c.floorH || 4) * (c.floor || 0)).toFixed(1)} m / şaft</strong>
+            </span>
+            <div style={{ fontSize:11, color:'var(--muted)', marginTop:4 }}>
+              Her zone için tam bina yüksekliği × zone sayısı. Şaft sayısıyla çarpılır.
+            </div>
           </div>
         </Card>
       )}

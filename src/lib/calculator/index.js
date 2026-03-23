@@ -31,10 +31,10 @@ export function calculate(config, priceOverride = {}) {
     totalFlats, floors,
     hyHotStart, hyHotL1, hyHotD2, hyHotL2, hyHotD3, hyHotL3,
     hyColdStart, hyColdL1, hyColdD2, hyColdL2, hyColdD3, hyColdL3,
-    circDiam, circYatay, circDikey, circFlat,
+    circDiam, circYatay,
     brDiam, brHot, brCold,
     katsayilar,
-    kolektors,   // [{hatId, mat, kdiam, rows:[{vd,hasCv}], kepAdet}]
+    kolektors,   // [{hatId, zoneIdx, mat, kdiam, rows:[{vd,hasCv}], kepAdet}]
     shaftVanaMat, shaftVanaDiam, shaftVanaAdet, shaft4katCk,
     hidroforAdet, hidroforDiam, hidroforVana, hidroforCv, hidroforUnion, hidroforUnionDiam, hidroforMano,
     emisDiam, emisVana, emisNip, emisFilt,
@@ -42,6 +42,10 @@ export function calculate(config, priceOverride = {}) {
     pump, mano, term, air, mainf, mainfDiam,
     dHotmeter, dColdmeter, dAda, dAda2, dFilt, dCv, dNip, dSaatrek, dValveIn, dValve,
   } = config;
+
+  // Sirkülasyon dikey uzunluğu otomatik hesap: zone sayısı × kat yüksekliği × kat sayısı
+  const autoCircDikey = (vertZoneCount || 1) * (floorH || 4) * (config.floor || 10);
+  const circFlat = 0; // Daire başı bağlantı kaldırıldı
 
   if (!totalFlats || totalFlats <= 0) {
     throw new Error('Toplam daire sayısı 0 olamaz. Adım 3 — Kat Dağılımı\'na geçip daire sayılarını girin.');
@@ -67,7 +71,7 @@ export function calculate(config, priceOverride = {}) {
   });
 
   addVerticalPipes(pipe, allSegs, shaft, hasHot, hasCold, hasCirc, {
-    circDiam, circDikey, circFlat, totalFlats,
+    circDiam, circDikey: autoCircDikey, circFlat, totalFlats,
   });
 
   addBranchPipes(pipe, hasHot, hasCold, {
@@ -86,7 +90,7 @@ export function calculate(config, priceOverride = {}) {
     if (hasHot)  pipeDikey[s.diam] = (pipeDikey[s.diam]||0) + s.m*shaft;
     if (hasCold) pipeDikey[s.diam] = (pipeDikey[s.diam]||0) + s.m*shaft;
   });
-  if (hasCirc) pipeDikey[circDiam] = (pipeDikey[circDiam]||0) + circDikey*shaft + circFlat*totalFlats;
+  if (hasCirc) pipeDikey[circDiam] = (pipeDikey[circDiam]||0) + autoCircDikey*shaft;
   if (hasHot)  pipeDikey[brDiam]   = (pipeDikey[brDiam]  ||0) + brHot*totalFlats;
   if (hasCold) pipeDikey[brDiam]   = (pipeDikey[brDiam]  ||0) + brCold*totalFlats;
 
@@ -203,13 +207,32 @@ export function calculate(config, priceOverride = {}) {
   applyBdToQty(QTY, activeZones, floors);
   applyFixedMechToQty(QTY, { pump, mano, term, air, mainf, mainfDiam });
 
+  // Zone bitişi manometreleri (her zone sonu için 1 adet)
+  QTY['mano'] = (QTY['mano'] || 0) + activeZones.length;
+
+  // ── 10a. Dikey hat kelepçeleri (çapa göre 1.5m'de 1 adet) ────────
+  const vertColDikey = {}; // Sadece şaft kolonu dikey boruları
+  allSegs.forEach(s => {
+    const hatSayV = (hasHot ? 1 : 0) + (hasCold ? 1 : 0);
+    if (hatSayV > 0) vertColDikey[s.diam] = (vertColDikey[s.diam] || 0) + s.m * shaft * hatSayV;
+  });
+  if (hasCirc) {
+    vertColDikey[circDiam] = (vertColDikey[circDiam] || 0) + autoCircDikey * shaft;
+  }
+  Object.entries(vertColDikey).forEach(([d, m]) => {
+    if (m > 0) {
+      const kId = 'kelep' + d.slice(1);
+      if (QTY[kId] !== undefined) QTY[kId] = (QTY[kId] || 0) + Math.ceil(m / 1.5);
+    }
+  });
+
   // ── 11. Maliyet ───────────────────────────────────────────────────
   const { lines, grandNet, kdvAmt, grandTotal } = calcCost(QTY, priceOverride, kdvRate);
 
   // ── 12. Özet KPI değerleri ────────────────────────────────────────
   const totalPipe = Object.values(pipe).reduce((a, b) => a + b, 0);
   const circTotal = hasCirc
-    ? circYatay + circDikey * shaft + circFlat * totalFlats
+    ? circYatay + autoCircDikey * shaft
     : 0;
   const hotYatay  = hasHot  ? (hyHotL1||0)  + (hyHotL2||0)  + (hyHotL3||0)  : 0;
   const coldYatay = hasCold ? (hyColdL1||0) + (hyColdL2||0) + (hyColdL3||0) : 0;
