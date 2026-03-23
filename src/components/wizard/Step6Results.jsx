@@ -1,6 +1,6 @@
 // ── Step 6 — Sonuçlar ─────────────────────────────────────────────────
 // Hesapla → Sonuçları gör → Projeyi kaydet → Ana Sayfaya yönlendir.
-// Revizyon yapmak için Geçmiş sayfasından "Revizyon Yap" kullanılır.
+// Varyasyon oluşturmak için Geçmiş sayfasından "Yeni Varyasyon" kullanılır.
 
 import { useState, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -148,10 +148,11 @@ export function Step6Results({ goStep }) {
 
   const projectId = useCalculationStore(s => s.projectId);
 
-  const [error,    setError]    = useState(null);
-  const [saving,   setSaving]   = useState(false);
-  const [saveName, setSaveName] = useState(projectName || '');
-  const [showSave, setShowSave] = useState(false);
+  const [error,     setError]     = useState(null);
+  const [saving,    setSaving]    = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  const [saveName,  setSaveName]  = useState(projectName || '');
+  const [showSave,  setShowSave]  = useState(false);
 
   function handleStartRevision() {
     startRevision({ id: projectId, name: projectName, config });
@@ -175,18 +176,21 @@ export function Step6Results({ goStep }) {
   async function handleSave() {
     if (!saveName.trim()) { showToast('Proje adı boş olamaz'); return; }
     setSaving(true);
-    const withTimeout = (p, ms) => Promise.race([
+    setSaveError(null);
+    const wt = (p, ms) => Promise.race([
       p,
-      new Promise((_, rej) => setTimeout(() => rej(new Error('Bağlantı zaman aşımı')), ms)),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('Sunucu yanıt vermedi. Supabase uyku modunda olabilir, lütfen tekrar deneyin.')), ms)),
     ]);
     try {
-      await withTimeout(saveProject(user.id, saveName.trim()), 12000);
-      try { if (result) await withTimeout(saveHistory(user.id, result), 8000); }
+      await wt(saveProject(user.id, saveName.trim()), 20000);
+      try { if (result) await wt(saveHistory(user.id, result), 10000); }
       catch (e) { console.warn('Geçmiş kaydı başarısız:', e); }
       showToast('✓ Proje kaydedildi');
       navigate('/');
     } catch (err) {
-      showToast('Kayıt hatası: ' + (err.message || 'Bilinmeyen'));
+      const msg = err?.message || String(err) || 'Bilinmeyen hata';
+      setSaveError(msg);
+      showToast('Kayıt hatası: ' + msg);
     } finally {
       setSaving(false);
     }
@@ -209,10 +213,10 @@ export function Step6Results({ goStep }) {
   return (
     <div>
 
-      {/* Revizyon modu banner */}
+      {/* Varyasyon modu banner */}
       {parentProjectId && !isReadOnly && (
         <div style={{ marginBottom:12, padding:'8px 14px', background:'rgba(59,130,246,0.08)', border:'1px solid var(--acc)', borderRadius:'var(--r)', fontSize:12, color:'var(--acc)', fontWeight:600 }}>
-          ↩ Revizyon Modu — Kaydettiğinizde yeni bir kayıt oluşturulacak, orijinal değişmeyecek.
+          🔀 Varyasyon Modu — Kaydettiğinizde yeni bir varyasyon oluşacak, orijinal proje değişmeyecek.
         </div>
       )}
 
@@ -256,14 +260,14 @@ export function Step6Results({ goStep }) {
             {isReadOnly ? (
               // Görüntüleme modunda: kayıt yok, sadece revizyon başlatma
               <>
-                <Button variant="primary" onClick={handleStartRevision}>↻ Revizyon Yap</Button>
+                <Button variant="primary" onClick={handleStartRevision}>⊕ Yeni Varyasyon</Button>
                 <Button variant="default" onClick={() => navigate('/gecmis')}>← Geçmiş</Button>
               </>
             ) : (
               // Düzenleme / Revizyon modu: kayıt butonu aktif
               <>
-                <Button variant="primary" onClick={() => { setShowSave(v => !v); setSaveName(projectName || ''); }}>
-                  💾 {parentProjectId ? 'Revizyon Olarak Kaydet' : 'Projeyi Kaydet'}
+                <Button variant="primary" onClick={() => { setShowSave(v => !v); setSaveName(projectName || ''); setSaveError(null); }}>
+                  💾 {parentProjectId ? 'Varyasyon Olarak Kaydet' : 'Projeyi Kaydet'}
                 </Button>
                 <Button variant="default" onClick={() => goStep(0)}>↩ Başa Dön</Button>
               </>
@@ -274,7 +278,7 @@ export function Step6Results({ goStep }) {
           {showSave && (
             <div style={{ marginTop:10, padding:'14px 16px', background:'var(--bg)', border:'1px solid var(--border)', borderRadius:'var(--r)' }}>
               <div style={{ fontSize:12, fontWeight:700, marginBottom:8 }}>
-                {parentProjectId ? 'Revizyon Adı' : 'Proje Adı'}
+                {parentProjectId ? 'Varyasyon Adı' : 'Proje Adı'}
               </div>
               <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
                 <input
@@ -289,10 +293,15 @@ export function Step6Results({ goStep }) {
                 </Button>
                 <Button variant="default" onClick={() => setShowSave(false)}>İptal</Button>
               </div>
+              {saveError && (
+                <div style={{ marginTop:8, padding:'7px 12px', background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:'var(--r2)', fontSize:12, color:'var(--red,#dc2626)', lineHeight:1.5 }}>
+                  ⚠ {saveError}
+                </div>
+              )}
               <div style={{ marginTop:7, fontSize:11, color:'var(--muted)' }}>
                 {parentProjectId
-                  ? 'Orijinal proje değişmez. Geçmiş sayfasında revizyonlar birlikte görünür.'
-                  : 'Kaydettikten sonra Ana Sayfa\'ya yönlendirileceksiniz. Revizyon yapmak için Geçmiş sayfasını kullanın.'}
+                  ? 'Orijinal proje değişmez. Geçmiş sayfasında varyasyonlar birlikte görünür.'
+                  : 'Kaydettikten sonra Ana Sayfa\'ya yönlendirileceksiniz. Varyasyon oluşturmak için Geçmiş sayfasını kullanın.'}
               </div>
             </div>
           )}
