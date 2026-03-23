@@ -172,21 +172,22 @@ export function Step6Results({ goStep }) {
     }
   }, [config, setResult]);
 
-  // ── Kaydet → Ana Sayfaya yönlendir ────────────────────────────
-  async function handleSave() {
-    if (!saveName.trim()) { showToast('Proje adı boş olamaz'); return; }
+  // ── Kaydet — hem normal hem varyasyon modu ─────────────────────
+  async function handleSave(nameOverride) {
+    const name = nameOverride ?? saveName;
+    if (!name?.trim()) { showToast('Proje adı boş olamaz'); return; }
     setSaving(true);
     setSaveError(null);
     const wt = (p, ms) => Promise.race([
       p,
-      new Promise((_, rej) => setTimeout(() => rej(new Error('Sunucu yanıt vermedi. Supabase uyku modunda olabilir, lütfen tekrar deneyin.')), ms)),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('Sunucu yanıt vermedi (20s). Supabase uyku modunda olabilir, tekrar deneyin.')), ms)),
     ]);
     try {
-      await wt(saveProject(user.id, saveName.trim()), 20000);
+      await wt(saveProject(user.id, name.trim()), 20000);
       try { if (result) await wt(saveHistory(user.id, result), 10000); }
       catch (e) { console.warn('Geçmiş kaydı başarısız:', e); }
       showToast('✓ Proje kaydedildi');
-      navigate('/');
+      navigate('/gecmis');
     } catch (err) {
       const msg = err?.message || String(err) || 'Bilinmeyen hata';
       setSaveError(msg);
@@ -215,8 +216,16 @@ export function Step6Results({ goStep }) {
 
       {/* Varyasyon modu banner */}
       {parentProjectId && !isReadOnly && (
-        <div style={{ marginBottom:12, padding:'8px 14px', background:'rgba(59,130,246,0.08)', border:'1px solid var(--acc)', borderRadius:'var(--r)', fontSize:12, color:'var(--acc)', fontWeight:600 }}>
-          🔀 Varyasyon Modu — Kaydettiğinizde yeni bir varyasyon oluşacak, orijinal proje değişmeyecek.
+        <div style={{ marginBottom:12, padding:'10px 14px', background:'rgba(59,130,246,0.08)', border:'1px solid var(--acc)', borderRadius:'var(--r)', fontSize:12, color:'var(--acc)' }}>
+          <div style={{ fontWeight:700, marginBottom:2 }}>🔀 Varyasyon Modu</div>
+          <div>
+            <strong>{projectName}</strong> adıyla kaydedilecek. Orijinal proje değişmeyecek.
+          </div>
+          {saveError && (
+            <div style={{ marginTop:7, padding:'6px 10px', background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:'var(--r2)', color:'var(--red,#dc2626)', fontWeight:400 }}>
+              ⚠ {saveError}
+            </div>
+          )}
         </div>
       )}
 
@@ -263,11 +272,16 @@ export function Step6Results({ goStep }) {
                 <Button variant="primary" onClick={handleStartRevision}>⊕ Yeni Varyasyon</Button>
                 <Button variant="default" onClick={() => navigate('/gecmis')}>← Geçmiş</Button>
               </>
+            ) : parentProjectId ? (
+              // Varyasyon modu: isim otomatik, direkt kaydet
+              <Button variant="primary" onClick={() => handleSave(projectName)} disabled={saving}>
+                {saving ? 'Kaydediliyor…' : `🔀 Varyasyon Olarak Kaydet`}
+              </Button>
             ) : (
-              // Düzenleme / Revizyon modu: kayıt butonu aktif
+              // Normal yeni proje: isim sor
               <>
                 <Button variant="primary" onClick={() => { setShowSave(v => !v); setSaveName(projectName || ''); setSaveError(null); }}>
-                  💾 {parentProjectId ? 'Varyasyon Olarak Kaydet' : 'Projeyi Kaydet'}
+                  💾 Projeyi Kaydet
                 </Button>
                 <Button variant="default" onClick={() => goStep(0)}>↩ Başa Dön</Button>
               </>

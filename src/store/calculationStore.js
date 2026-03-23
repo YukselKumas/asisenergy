@@ -305,10 +305,12 @@ export const useCalculationStore = create((set, get) => ({
   saveProject: async (userId, name, description) => {
     set({ isSaving: true });
     const { config, result, projectId } = get();
-
     const { revisions, parentProjectId } = get();
-    const payload = {
-      name:        name || get().projectName || 'İsimsiz Proje',
+
+    const finalName = name || get().projectName || 'İsimsiz Proje';
+
+    const buildPayload = (includeParent) => ({
+      name:        finalName,
       description: description || null,
       created_by:  userId,
       config,
@@ -316,13 +318,12 @@ export const useCalculationStore = create((set, get) => ({
       revisions,
       status:      result ? 'completed' : 'draft',
       updated_at:  new Date().toISOString(),
-      // parent_project_id yalnızca revizyon modunda eklenir (kolon yoksa normal kayıt bozulmasın)
-      ...(parentProjectId ? { parent_project_id: parentProjectId } : {}),
-    };
+      ...(includeParent && parentProjectId ? { parent_project_id: parentProjectId } : {}),
+    });
 
     let id = projectId;
 
-    try {
+    const doUpsert = async (payload) => {
       if (id) {
         const { error } = await supabase.from('projects').update(payload).eq('id', id);
         if (error) throw error;
@@ -331,12 +332,27 @@ export const useCalculationStore = create((set, get) => ({
         if (error) throw error;
         id = data.id;
       }
+    };
+
+    try {
+      try {
+        await doUpsert(buildPayload(true));
+      } catch (firstErr) {
+        // parent_project_id kolonu henüz yoksa kolonsuz kaydet
+        const msg = firstErr?.message || '';
+        if (parentProjectId && (msg.includes('parent_project_id') || msg.includes('column'))) {
+          console.warn('parent_project_id kolonu bulunamadı, kolonsuz kaydediliyor. SQL migration çalıştırın.');
+          await doUpsert(buildPayload(false));
+        } else {
+          throw firstErr;
+        }
+      }
     } catch (err) {
       set({ isSaving: false });
       throw err;
     }
 
-    set({ projectId: id, projectName: payload.name, parentProjectId: null, isDirty: false, isSaving: false });
+    set({ projectId: id, projectName: finalName, parentProjectId: null, isDirty: false, isSaving: false });
     return id;
   },
 
