@@ -17,7 +17,11 @@ export function NewCalculationPage() {
     if (id) {
       loadExisting(id);
     } else {
-      newCalculation();
+      // Varyasyon modunda gelindiyse (startRevision çağrıldıysa) store'u sıfırlama!
+      const { parentProjectId } = useCalculationStore.getState();
+      if (!parentProjectId) {
+        newCalculation();
+      }
     }
   }, [id]);
 
