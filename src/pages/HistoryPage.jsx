@@ -231,9 +231,14 @@ export function HistoryPage() {
     navigate(`/hesaplama/${project.id}`);
   }
 
-  function handleNewVariant(project) {
-    const varCount = (childrenOf[project.id] || []).length;
-    startRevision(project, varCount + 1);
+  // Yeni varyasyon: her zaman ROOT projenin altında sibling olarak oluştur
+  function handleNewVariant(project, rootOverride = null) {
+    const rootProject  = rootOverride || project;
+    const varCount     = (childrenOf[rootProject.id] || []).length;
+    startRevision(
+      { id: rootProject.id, name: rootProject.name, config: project.config },
+      varCount + 1
+    );
     navigate('/hesaplama/yeni');
   }
 
@@ -260,8 +265,10 @@ export function HistoryPage() {
   const compareVariants = compareId ? (childrenOf[compareId] || []) : [];
 
   // ── Tek satır bileşeni ──────────────────────────────────────────────
-  function ProjectRow({ p, isVariant = false, varIndex = 0 }) {
+  // rootProject: varyasyon satırı için root proje objesi (sibling oluşturmak için)
+  function ProjectRow({ p, isVariant = false, varIndex = 0, rootProject = null }) {
     const variants = childrenOf[p.id] || [];
+    const effectiveRoot = isVariant ? rootProject : p;
     const isExp    = expanded[p.id] ?? false;
     const total    = p.result?.grandTotal;
     const st       = STATUS_LABEL[p.status] || STATUS_LABEL.draft;
@@ -348,14 +355,13 @@ export function HistoryPage() {
                 Görüntüle
               </button>
 
-              {/* Yeni varyasyon — sadece kök projede */}
-              {!isVariant && (
-                <button onClick={() => handleNewVariant(p)}
-                  style={{ background:'var(--bg)', color:'var(--acc)', border:'1px solid rgba(99,102,241,0.35)', borderRadius:999, padding:'4px 10px', fontSize:11, cursor:'pointer', fontWeight:700 }}
-                  title="Bu projeyi temel alarak yeni varyasyon başlat">
-                  ⊕ Yeni Varyasyon
-                </button>
-              )}
+              {/* Yeni varyasyon — root ve variant satırlarında, her zaman root altında sibling */}
+              <button
+                onClick={() => handleNewVariant(p, isVariant ? effectiveRoot : null)}
+                style={{ background:'var(--bg)', color:'var(--acc)', border:'1px solid rgba(99,102,241,0.35)', borderRadius:999, padding:'4px 10px', fontSize:11, cursor:'pointer', fontWeight:700 }}
+                title={isVariant ? `${effectiveRoot?.name} için yeni varyasyon` : 'Bu projeyi temel alarak yeni varyasyon başlat'}>
+                ⊕ Yeni Varyasyon
+              </button>
 
               {/* Karşılaştır — sadece varyasyonu olan kök projede */}
               {!isVariant && variants.length > 0 && (
@@ -384,7 +390,7 @@ export function HistoryPage() {
 
         {/* Varyasyon alt satırları */}
         {isExp && variants.map((v, vi) => (
-          <ProjectRow key={v.id} p={v} isVariant varIndex={vi} />
+          <ProjectRow key={v.id} p={v} isVariant varIndex={vi} rootProject={p} />
         ))}
       </>
     );

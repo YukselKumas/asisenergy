@@ -117,7 +117,8 @@ export const useCalculationStore = create((set, get) => ({
   result:          null,    // Son hesaplama çıktısı
   projectId:       null,    // Kaydedilmiş proje UUID'si
   projectName:     '',      // Proje adı
-  parentProjectId: null,    // Revizyon ise orijinal projenin ID'si
+  parentProjectId: null,    // Varyasyon ise root projenin ID'si (yeni kayıt için)
+  loadedParentId:  null,    // Görüntülenen projenin kendi parent_project_id'si
   isReadOnly:      false,   // true = görüntüleme modu, kayıt/düzenleme engellendi
   isDirty:         false,
   isSaving:        false,
@@ -205,6 +206,7 @@ export const useCalculationStore = create((set, get) => ({
     projectId:       null,
     projectName:     '',
     parentProjectId: null,
+    loadedParentId:  null,
     isReadOnly:      false,
     isDirty:         false,
     revisions:       [],
@@ -218,7 +220,8 @@ export const useCalculationStore = create((set, get) => ({
     projectId:       project.id,
     projectName:     project.name,
     parentProjectId: null,
-    isReadOnly:      true,   // Geçmiş'ten açılan proje değiştirilemez
+    loadedParentId:  project.parent_project_id || null,  // Kendi parent'ı (varyasyon mu?)
+    isReadOnly:      true,
     isDirty:         false,
     revisions:       project.revisions || [],
     activeRevId:     null,
@@ -231,7 +234,8 @@ export const useCalculationStore = create((set, get) => ({
     projectId:       project.id,
     projectName:     project.name,
     parentProjectId: null,
-    isReadOnly:      false,  // Admin düzenleme modu
+    loadedParentId:  project.parent_project_id || null,
+    isReadOnly:      false,
     isDirty:         false,
     revisions:       project.revisions || [],
     activeRevId:     null,
@@ -324,14 +328,25 @@ export const useCalculationStore = create((set, get) => ({
     let id = projectId;
 
     const doUpsert = async (payload) => {
-      if (id) {
-        const { error } = await supabase.from('projects').update(payload).eq('id', id);
-        if (error) throw error;
-      } else {
-        const { data, error } = await supabase.from('projects').insert(payload).select().single();
-        if (error) throw error;
-        id = data.id;
+      // 2 deneme: ilk başarısız olursa 3 saniye bekle tekrar dene
+      let lastErr;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 3000));
+        try {
+          if (id) {
+            const { error } = await supabase.from('projects').update(payload).eq('id', id);
+            if (error) throw error;
+          } else {
+            const { data, error } = await supabase.from('projects').insert(payload).select().single();
+            if (error) throw error;
+            id = data.id;
+          }
+          return; // başarılı
+        } catch (e) {
+          lastErr = e;
+        }
       }
+      throw lastErr;
     };
 
     try {
