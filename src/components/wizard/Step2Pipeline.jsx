@@ -50,16 +50,53 @@ export function Step2Pipeline({ goStep }) {
 
   return (
     <div>
-      {/* Kolektörler — zone başına */}
+      {/* Kolektörler — hat başına bağımsız zone sayısı */}
       <Card accent="acc" title="Mekanik Oda — Kolektörler" badge="Kol.">
         <p style={{ fontSize:12, color:'var(--muted)', marginBottom:14 }}>
-          Her hat ve zone için ayrı kolektör tanımlanır. Zone sayısı Adım 2 dikey kolon ayarından gelir.
+          Her hat için kolektör zone sayısını ayrı belirleyebilirsiniz.
         </p>
-        {['hot','cold'].filter(h => c[h === 'hot' ? 'hasHot' : 'hasCold']).flatMap(h =>
-          Array.from({ length: c.vertZoneCount || 1 }, (_, zi) => (
-            <KollectorCard key={`${h}-${zi}`} hatId={h} zoneIdx={zi} />
-          ))
-        )}
+
+        {/* Hat başına zone sayısı seçicileri */}
+        <div className="g g4" style={{ marginBottom:20 }}>
+          {c.hasHot && (
+            <div>
+              <div style={{ fontSize:11, fontWeight:700, color:'var(--hot)', marginBottom:6 }}>🔴 Sıcak Su — Zone Sayısı</div>
+              <GlassSelect
+                value={c.hotKolZoneCount ?? 1}
+                onChange={e => {
+                  const n = parseInt(e.target.value);
+                  const trimmed = (c.kolektors || []).filter(k => !(k.hatId === 'hot' && (k.zoneIdx ?? 0) >= n));
+                  setConfig({ hotKolZoneCount: n, kolektors: trimmed });
+                }}
+              >
+                {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n} Zone</option>)}
+              </GlassSelect>
+            </div>
+          )}
+          {c.hasCold && (
+            <div>
+              <div style={{ fontSize:11, fontWeight:700, color:'var(--cold)', marginBottom:6 }}>🔵 Soğuk Su — Zone Sayısı</div>
+              <GlassSelect
+                value={c.coldKolZoneCount ?? 1}
+                onChange={e => {
+                  const n = parseInt(e.target.value);
+                  const trimmed = (c.kolektors || []).filter(k => !(k.hatId === 'cold' && (k.zoneIdx ?? 0) >= n));
+                  setConfig({ coldKolZoneCount: n, kolektors: trimmed });
+                }}
+              >
+                {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n} Zone</option>)}
+              </GlassSelect>
+            </div>
+          )}
+        </div>
+
+        {/* Kolektör kartları */}
+        {c.hasHot && Array.from({ length: c.hotKolZoneCount || 1 }, (_, zi) => (
+          <KollectorCard key={`hot-${zi}`} hatId="hot" zoneIdx={zi} />
+        ))}
+        {c.hasCold && Array.from({ length: c.coldKolZoneCount || 1 }, (_, zi) => (
+          <KollectorCard key={`cold-${zi}`} hatId="cold" zoneIdx={zi} />
+        ))}
       </Card>
 
       {/* Yatay Ana Hat */}

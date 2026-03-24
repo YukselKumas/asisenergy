@@ -90,6 +90,10 @@ export const DEFAULT_CONFIG = {
   dValveIn: 1,   // Ana kesme vanası - sayaç önü (branşman çapı)
   dValve:   1,   // İkinci vana - sayaç arkası (bir küçük çap)
 
+  // Kolektörler — hat başına bağımsız zone sayısı
+  hotKolZoneCount:  1,   // Sıcak su kolektörü zone adedi
+  coldKolZoneCount: 1,   // Soğuk su kolektörü zone adedi
+
   // Kolektörler
   kolektors: [],
 

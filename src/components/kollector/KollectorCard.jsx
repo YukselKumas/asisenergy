@@ -24,7 +24,9 @@ export function KollectorCard({ hatId, zoneIdx = 0 }) {
   const kols = config.kolektors || [];
   const kolIdx = kols.findIndex(k => k.hatId === hatId && (k.zoneIdx ?? 0) === zoneIdx);
 
-  const zoneCount = config.vertZoneCount || 1;
+  const zoneCount = hatId === 'hot'
+    ? (config.hotKolZoneCount  || 1)
+    : (config.coldKolZoneCount || 1);
   const zoneLabel = zoneCount > 1 ? ` — Zone ${zoneIdx + 1}` : '';
 
   const defaultKol = {
