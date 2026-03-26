@@ -46,8 +46,6 @@ export function calculate(config, priceOverride = {}) {
     coldDownFloors, coldDownDiam,
   } = config;
 
-  // Sirkülasyon dikey uzunluğu otomatik hesap: zone sayısı × kat yüksekliği × kat sayısı
-  const autoCircDikey = (vertZoneCount || 1) * (floorH || 4) * (config.floor || 10);
   const circFlat = 0; // Daire başı bağlantı kaldırıldı
 
   if (!totalFlats || totalFlats <= 0) {
@@ -63,6 +61,10 @@ export function calculate(config, priceOverride = {}) {
   // Her zone şaft tabanından (shaftFloor) kendi bitiş katına kadar boru çeker
   const shaftStart = shaftFloor ?? firstFloor ?? 1;
   const allSegs = calcAllSegments(activeZones, floorH || 4, vertStep, shaftStart);
+
+  // Sirkülasyon dikey: sıcak suyla aynı fiziksel yükseklik.
+  // Zone konfigürasyonundan türetilir (config.floor değil) — tutarlılık için.
+  const autoCircDikey = allSegs.reduce((s, sg) => s + sg.m, 0);
 
   // ── 2. Boru haritası ───────────────────────────────────────────────
   const pipe = emptyPipeMap();
