@@ -90,6 +90,15 @@ export const DEFAULT_CONFIG = {
   dValveIn: 1,   // Ana kesme vanası - sayaç önü (branşman çapı)
   dValve:   1,   // İkinci vana - sayaç arkası (bir küçük çap)
 
+  // Kelepçe ve montaj donanımı
+  kelepceSpacing:   4,     // metre cinsinden kelepçe aralığı (varsayılan 4m)
+
+  // Şaft girişi — aşağı inen hat (şaft tabanından bodrum katlarına)
+  hotDownFloors:    0,     // sıcak su aşağı inen kat sayısı (0 = yok)
+  hotDownDiam:      'q50', // sıcak su aşağı inen hat çapı
+  coldDownFloors:   0,     // soğuk su aşağı inen kat sayısı (0 = yok)
+  coldDownDiam:     'q50', // soğuk su aşağı inen hat çapı
+
   // Kolektörler — hat başına bağımsız zone sayısı
   hotKolZoneCount:  1,   // Sıcak su kolektörü zone adedi
   coldKolZoneCount: 1,   // Soğuk su kolektörü zone adedi

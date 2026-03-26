@@ -41,6 +41,9 @@ export function calculate(config, priceOverride = {}) {
     boylerAdet, boylerDiam, boylerVana,
     pump, mano, term, air, mainf, mainfDiam,
     dHotmeter, dColdmeter, dAda, dAda2, dFilt, dCv, dNip, dSaatrek, dValveIn, dValve,
+    kelepceSpacing,
+    hotDownFloors, hotDownDiam,
+    coldDownFloors, coldDownDiam,
   } = config;
 
   // Sirkülasyon dikey uzunluğu otomatik hesap: zone sayısı × kat yüksekliği × kat sayısı
@@ -210,21 +213,87 @@ export function calculate(config, priceOverride = {}) {
   // Zone bitişi manometreleri (her zone sonu için 1 adet)
   QTY['mano'] = (QTY['mano'] || 0) + activeZones.length;
 
-  // ── 10a. Dikey hat kelepçeleri (çapa göre 1.5m'de 1 adet) ────────
-  const vertColDikey = {}; // Sadece şaft kolonu dikey boruları
-  allSegs.forEach(s => {
-    const hatSayV = (hasHot ? 1 : 0) + (hasCold ? 1 : 0);
-    if (hatSayV > 0) vertColDikey[s.diam] = (vertColDikey[s.diam] || 0) + s.m * shaft * hatSayV;
-  });
-  if (hasCirc) {
-    vertColDikey[circDiam] = (vertColDikey[circDiam] || 0) + autoCircDikey * shaft;
+  // ── 10a. Şaft giriş noktası — aşağı inen hat Te + Redüksiyon ─────
+  // Model: yatay hat şaft girişinde bölünür → yukarı (mevcut zone sistemi) + aşağı inen
+  // Te tipi: çaplar aynıysa Equal Te, farklıysa Equal Te + Redüksiyon
+  const hotEndDiam  = (hyHotD3  && hyHotL3  > 0) ? hyHotD3  : (hyHotD2  && hyHotL2  > 0) ? hyHotD2  : hyHotStart;
+  const coldEndDiam = (hyColdD3 && hyColdL3 > 0) ? hyColdD3 : (hyColdD2 && hyColdL2 > 0) ? hyColdD2 : hyColdStart;
+
+  const addJunctionFittings = (endDiam, downDiam, downFloors) => {
+    if (!endDiam || !(downFloors > 0)) return;
+    const endN  = endDiam.slice(1);   // e.g. '75'
+    const downN = downDiam.slice(1);  // e.g. '50'
+    // Equal Te at the junction (run diam)
+    const tId = 't' + endN;
+    QTY[tId] = (QTY[tId] || 0) + shaft;
+    // If down riser is smaller → add reducer
+    if (endDiam !== downDiam) {
+      const eNN = parseInt(endN);
+      const dNN = parseInt(downN);
+      const bigN   = eNN > dNN ? endN  : downN;
+      const smallN = eNN < dNN ? endN  : downN;
+      const rId = 'r' + bigN + smallN;
+      if (QTY[rId] !== undefined) QTY[rId] = (QTY[rId] || 0) + shaft;
+      else QTY[rId] = shaft;
+    }
+    // Down riser pipe
+    const downM = downFloors * (floorH || 4) * shaft;
+    QTY[downDiam] = (QTY[downDiam] || 0) + downM;
+    pipe[downDiam] = (pipe[downDiam] || 0) + downM;
+  };
+
+  if (hasHot)  addJunctionFittings(hotEndDiam,  hotDownDiam  || 'q50', hotDownFloors  || 0);
+  if (hasCold) addJunctionFittings(coldEndDiam, coldDownDiam || 'q50', coldDownFloors || 0);
+
+  // ── 10b. Kelepçe — tüm boru hatları (yatay + dikey + aşağı inen) ─
+  // spacing = kelepceSpacing config değeri (varsayılan 4m)
+  const spacing = kelepceSpacing || 4;
+  const kelepMap = {}; // diam → toplam metre (kelepçe hesabı için)
+  const addKelep = (d, m) => { if (d && m > 0) kelepMap[d] = (kelepMap[d] || 0) + m; };
+
+  // Yatay borular
+  if (hasHot) {
+    addKelep(hyHotStart, hyHotL1 || 0);
+    addKelep(hyHotD2,    hyHotL2 || 0);
+    addKelep(hyHotD3,    hyHotL3 || 0);
   }
-  Object.entries(vertColDikey).forEach(([d, m]) => {
+  if (hasCold) {
+    addKelep(hyColdStart, hyColdL1 || 0);
+    addKelep(hyColdD2,    hyColdL2 || 0);
+    addKelep(hyColdD3,    hyColdL3 || 0);
+  }
+  if (hasCirc) addKelep(circDiam, circYatay || 0);
+
+  // Dikey borular (şaft kolonu)
+  const hatSayV = (hasHot ? 1 : 0) + (hasCold ? 1 : 0);
+  allSegs.forEach(s => {
+    if (hatSayV > 0) addKelep(s.diam, s.m * shaft * hatSayV);
+  });
+  if (hasCirc) addKelep(circDiam, autoCircDikey * shaft);
+
+  // Branşman boruları
+  if (hasHot)  addKelep(brDiam, (brHot  || 0) * totalFlats);
+  if (hasCold) addKelep(brDiam, (brCold || 0) * totalFlats);
+
+  // Aşağı inen hatlar
+  if (hasHot  && (hotDownFloors  || 0) > 0) addKelep(hotDownDiam  || 'q50', (hotDownFloors  || 0) * (floorH || 4) * shaft);
+  if (hasCold && (coldDownFloors || 0) > 0) addKelep(coldDownDiam || 'q50', (coldDownFloors || 0) * (floorH || 4) * shaft);
+
+  // Kelepçe adet → QTY
+  let totalClamps = 0;
+  Object.entries(kelepMap).forEach(([d, m]) => {
     if (m > 0) {
       const kId = 'kelep' + d.slice(1);
-      if (QTY[kId] !== undefined) QTY[kId] = (QTY[kId] || 0) + Math.ceil(m / 1.5);
+      const cnt = Math.ceil(m / spacing);
+      totalClamps += cnt;
+      if (QTY[kId] !== undefined) QTY[kId] = (QTY[kId] || 0) + cnt;
     }
   });
+
+  // Montaj donanımı (kelepçe başına 1 dübel + 1 civata + 2 pul)
+  QTY['dubel']  = (QTY['dubel']  || 0) + totalClamps;
+  QTY['civata'] = (QTY['civata'] || 0) + totalClamps;
+  QTY['pul']    = (QTY['pul']    || 0) + totalClamps * 2;
 
   // ── 11. Maliyet ───────────────────────────────────────────────────
   const { lines, grandNet, kdvAmt, grandTotal } = calcCost(QTY, priceOverride, kdvRate);
