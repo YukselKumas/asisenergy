@@ -57,8 +57,7 @@ const PipeSummary = memo(function PipeSummary({ result, config }) {
           <div className="hcard circ">
             <div className="hcard-title circ">🟣 Sirkülasyon</div>
             <div className="hrow"><span>Yatay</span><span className="hrow-v">{TR(config.circYatay||0,0)} m</span></div>
-            <div className="hrow"><span>Dikey</span><span className="hrow-v">{TR((config.circDikey||0)*(config.shaft||1),0)} m</span></div>
-            <div className="hrow"><span>Daire bağlantıları</span><span className="hrow-v">{TR((config.circFlat||0)*tf,0)} m</span></div>
+            <div className="hrow"><span>Dikey</span><span className="hrow-v">{TR(result.circDikeyTotal||0,0)} m</span></div>
             <div className="hrow"><span>TOPLAM</span><span className="hrow-v" style={{ color:'var(--circ)' }}>{TR(result.circTotal,0)} m</span></div>
           </div>
         )}
