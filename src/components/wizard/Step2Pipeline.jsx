@@ -26,9 +26,10 @@ export function Step2Pipeline({ goStep }) {
   }
 
   function changeZoneCount(count) {
+    const shaftBase = c.shaftFloor ?? c.firstFloor ?? 1;
     const cur  = c.zones || [];
-    const def  = { from:1, to:4, startDiam:'q63', minDiam:'q25', bdAktif:'evet', bdDiam:'34', bdTo:4 };
-    const next = Array.from({ length: count }, (_, i) => cur[i] || { ...def, from: i*5+1, to: (i+1)*5 });
+    const def  = { from: shaftBase, to: shaftBase + 4, startDiam:'q63', minDiam:'q25', bdAktif:'evet', bdDiam:'34', bdTo: shaftBase + 4 };
+    const next = Array.from({ length: count }, (_, i) => cur[i] || { ...def, from: shaftBase + i*5, to: shaftBase + (i+1)*5 - 1 });
     if (count === 1) {
       next[0] = { ...next[0], to: c.floor || next[0].to, bdTo: c.floor || next[0].bdTo };
     }
@@ -115,7 +116,7 @@ export function Step2Pipeline({ goStep }) {
                 </GlassSelect>
               </Field>
               <Field label="Uzunluk 1 (m)">
-                <input type="number" value={c.hyHotL1} min="0" step="0.1" onChange={e => updN('hyHotL1', e.target.value)} />
+                <input type="number" value={c.hyHotL1 || ''} min="0" step="0.1" onChange={e => updN('hyHotL1', e.target.value)} />
               </Field>
               <Field label="2. Çap">
                 <GlassSelect value={c.hyHotD2} onChange={e => upd('hyHotD2', e.target.value)}>
@@ -124,7 +125,7 @@ export function Step2Pipeline({ goStep }) {
                 </GlassSelect>
               </Field>
               <Field label="Uzunluk 2 (m)">
-                <input type="number" value={c.hyHotL2} min="0" step="0.1" onChange={e => updN('hyHotL2', e.target.value)} />
+                <input type="number" value={c.hyHotL2 || ''} min="0" step="0.1" onChange={e => updN('hyHotL2', e.target.value)} />
               </Field>
               <Field label="3. Çap">
                 <GlassSelect value={c.hyHotD3} onChange={e => upd('hyHotD3', e.target.value)}>
@@ -133,7 +134,7 @@ export function Step2Pipeline({ goStep }) {
                 </GlassSelect>
               </Field>
               <Field label="Uzunluk 3 (m)">
-                <input type="number" value={c.hyHotL3} min="0" step="0.1" onChange={e => updN('hyHotL3', e.target.value)} />
+                <input type="number" value={c.hyHotL3 || ''} min="0" step="0.1" onChange={e => updN('hyHotL3', e.target.value)} />
               </Field>
             </div>
           </>
@@ -149,7 +150,7 @@ export function Step2Pipeline({ goStep }) {
                 </GlassSelect>
               </Field>
               <Field label="Uzunluk 1 (m)">
-                <input type="number" value={c.hyColdL1} min="0" step="0.1" onChange={e => updN('hyColdL1', e.target.value)} />
+                <input type="number" value={c.hyColdL1 || ''} min="0" step="0.1" onChange={e => updN('hyColdL1', e.target.value)} />
               </Field>
               <Field label="2. Çap">
                 <GlassSelect value={c.hyColdD2} onChange={e => upd('hyColdD2', e.target.value)}>
@@ -158,7 +159,7 @@ export function Step2Pipeline({ goStep }) {
                 </GlassSelect>
               </Field>
               <Field label="Uzunluk 2 (m)">
-                <input type="number" value={c.hyColdL2} min="0" step="0.1" onChange={e => updN('hyColdL2', e.target.value)} />
+                <input type="number" value={c.hyColdL2 || ''} min="0" step="0.1" onChange={e => updN('hyColdL2', e.target.value)} />
               </Field>
               <Field label="3. Çap">
                 <GlassSelect value={c.hyColdD3} onChange={e => upd('hyColdD3', e.target.value)}>
@@ -167,7 +168,7 @@ export function Step2Pipeline({ goStep }) {
                 </GlassSelect>
               </Field>
               <Field label="Uzunluk 3 (m)">
-                <input type="number" value={c.hyColdL3} min="0" step="0.1" onChange={e => updN('hyColdL3', e.target.value)} />
+                <input type="number" value={c.hyColdL3 || ''} min="0" step="0.1" onChange={e => updN('hyColdL3', e.target.value)} />
               </Field>
             </div>
           </>
@@ -183,7 +184,7 @@ export function Step2Pipeline({ goStep }) {
                 </GlassSelect>
               </Field>
               <Field label="Yatay Uzunluk (m)">
-                <input type="number" value={c.circYatay} min="0" step="0.1" onChange={e => updN('circYatay', e.target.value)} />
+                <input type="number" value={c.circYatay || ''} min="0" step="0.1" onChange={e => updN('circYatay', e.target.value)} />
               </Field>
             </div>
           </>
@@ -219,9 +220,14 @@ export function Step2Pipeline({ goStep }) {
               {i+1}. Zone
             </div>
             <div className="g g4">
-              <Field label="Servis Başlangıç Katı" hint="Bu zone'un beslediği ilk kat">
-                <input type="number" value={zone.from} min="1" style={{ fontFamily:'var(--mono)', fontWeight:700 }}
-                  onChange={e => updZone(i, 'from', parseInt(e.target.value))} />
+              <Field label="Servis Başlangıç Katı" hint={i === 0 ? 'Şaft başlangıcı (Adım 1\'den)' : 'Bu zone\'un beslediği ilk kat'}>
+                {i === 0 ? (
+                  <input type="number" readOnly value={c.shaftFloor ?? c.firstFloor ?? 1}
+                    style={{ fontFamily:'var(--mono)', fontWeight:700, background:'var(--bg)', opacity:0.7, cursor:'not-allowed' }} />
+                ) : (
+                  <input type="number" value={zone.from} min="1" style={{ fontFamily:'var(--mono)', fontWeight:700 }}
+                    onChange={e => updZone(i, 'from', parseInt(e.target.value))} />
+                )}
               </Field>
               <Field label="Servis Bitiş Katı" hint="Bu zone'un beslediği son kat (boru buraya kadar çekilir)">
                 <input type="number" value={zone.to} min="1" style={{ fontFamily:'var(--mono)', fontWeight:700 }}
