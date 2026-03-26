@@ -309,6 +309,7 @@ export function calculate(config, priceOverride = {}) {
   const coldYatay = hasCold ? (hyColdL1||0) + (hyColdL2||0) + (hyColdL3||0) : 0;
   const hotDikey  = hasHot  ? allSegs.reduce((s, sg) => s + sg.m * shaft, 0) : 0;
   const coldDikey = hasCold ? allSegs.reduce((s, sg) => s + sg.m * shaft, 0) : 0;
+  const circDikeyTotal = hasCirc ? autoCircDikey * shaft : 0; // şaft × diam bazlı gerçek dikey
 
   return {
     QTY,
@@ -321,6 +322,7 @@ export function calculate(config, priceOverride = {}) {
     kolSummary,
     totalPipe,
     circTotal,
+    circDikeyTotal,
     hotYatay, hotDikey,
     coldYatay, coldDikey,
     totalFlats,
