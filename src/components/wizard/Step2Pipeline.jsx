@@ -336,6 +336,73 @@ export function Step2Pipeline({ goStep }) {
         </div>
       </Card>
 
+      {/* Şaft Girişi — Aşağı İnen Hat */}
+      <Card accent="acc" title="Şaft Girişi — Aşağı İnen Hat (Bodrum Katlar)" badge="F">
+        <p style={{ fontSize:12, color:'var(--muted)', marginBottom:14 }}>
+          Yatay hat şaft girişinde bölünüyorsa: yukarı zaten zone sistemiyle hesaplanır.
+          Aşağıya inen hat için Te + redüksiyon + boru ekleyin.
+          <strong> 0 kat = devre dışı.</strong>
+        </p>
+        {c.hasHot && (
+          <>
+            <div className="slbl" style={{ color:'var(--hot)' }}>🔴 Sıcak Su — Şafta Aşağı İnen Hat</div>
+            <div className="g g3" style={{ marginBottom:12 }}>
+              <Field label="Aşağı İnen Kat Sayısı" hint="0 = yok">
+                <input type="number" value={c.hotDownFloors ?? 0} min="0"
+                  onChange={e => updN('hotDownFloors', e.target.value)} />
+              </Field>
+              <Field label="Aşağı İnen Hat Çapı">
+                <GlassSelect value={c.hotDownDiam ?? 'q50'}
+                  onChange={e => upd('hotDownDiam', e.target.value)}>
+                  {['q25','q32','q40','q50','q63','q75'].map(d=><option key={d} value={d}>{DIAM_LABEL[d]}</option>)}
+                </GlassSelect>
+              </Field>
+            </div>
+          </>
+        )}
+        {c.hasCold && (
+          <>
+            <div className="slbl" style={{ color:'var(--cold)', marginTop: c.hasHot ? 8 : 0 }}>🔵 Soğuk Su — Şafta Aşağı İnen Hat</div>
+            <div className="g g3" style={{ marginBottom:12 }}>
+              <Field label="Aşağı İnen Kat Sayısı" hint="0 = yok">
+                <input type="number" value={c.coldDownFloors ?? 0} min="0"
+                  onChange={e => updN('coldDownFloors', e.target.value)} />
+              </Field>
+              <Field label="Aşağı İnen Hat Çapı">
+                <GlassSelect value={c.coldDownDiam ?? 'q50'}
+                  onChange={e => upd('coldDownDiam', e.target.value)}>
+                  {['q25','q32','q40','q50','q63','q75'].map(d=><option key={d} value={d}>{DIAM_LABEL[d]}</option>)}
+                </GlassSelect>
+              </Field>
+            </div>
+          </>
+        )}
+        <div style={{ marginTop:12, padding:'10px 14px', background:'var(--bg)', border:'1px solid var(--border)', borderRadius:'var(--r3)', fontSize:12, color:'var(--muted)' }}>
+          Şaft girişine <strong>Equal Te</strong> (aynı çap) veya <strong>Equal Te + Redüksiyon</strong> (farklı çap) hesaplanır.
+          Aşağı inen boru için ayrıca kelepçe eklenir.
+        </div>
+      </Card>
+
+      {/* Kelepçe Montaj Ayarı */}
+      <Card accent="acc" title="Kelepçe & Montaj Donanımı Ayarı" badge="G">
+        <p style={{ fontSize:12, color:'var(--muted)', marginBottom:14 }}>
+          Tüm boru hatlarında (yatay + dikey + branşman + aşağı inen) kelepçe aralığını belirleyin.
+          Her kelepçe için 1 dübel + 1 civata + 2 pul otomatik hesaplanır.
+        </p>
+        <div className="g g3">
+          <Field label="Kelepçe Aralığı (m)" hint="Boru başına kaç metrede bir kelepçe?">
+            <GlassSelect value={c.kelepceSpacing ?? 4}
+              onChange={e => updN('kelepceSpacing', e.target.value)}>
+              <option value={2}>2 m</option>
+              <option value={3}>3 m</option>
+              <option value={4}>4 m (Önerilen)</option>
+              <option value={5}>5 m</option>
+              <option value={6}>6 m</option>
+            </GlassSelect>
+          </Field>
+        </div>
+      </Card>
+
       <div className="btn-row">
         <Button variant="default" onClick={() => goStep(0)}>← Geri</Button>
         <Button variant="primary" onClick={() => {
