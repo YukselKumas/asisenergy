@@ -52,11 +52,11 @@ export const DEFAULT_CONFIG = {
   mainf:          2,
   mainfDiam:      'f114',
 
-  // Adım 2 — Boru Güzergahı
-  hyHotStart: 'q75', hyHotL1: 30, hyHotD2: 'q63', hyHotL2: 30, hyHotD3: '', hyHotL3: 0,
-  hyColdStart:'q75', hyColdL1:30, hyColdD2:'q63', hyColdL2:30, hyColdD3:'', hyColdL3:0,
+  // Adım 2 — Boru Güzergahı (0 = boş/doldurulmadı)
+  hyHotStart: 'q75', hyHotL1: 0, hyHotD2: '', hyHotL2: 0, hyHotD3: '', hyHotL3: 0,
+  hyColdStart:'q75', hyColdL1:0, hyColdD2:'',hyColdL2:0,  hyColdD3:'', hyColdL3:0,
   circDiam:    'q40',
-  circYatay:   60,
+  circYatay:   0,
   circDikey:   40,
   circFlat:    1,
   vertZoneCount: 3,
