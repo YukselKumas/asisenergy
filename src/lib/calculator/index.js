@@ -122,15 +122,24 @@ export function calculate(config, priceOverride = {}) {
   });
 
   // ── 6. Şaft başı branşman Te — fizik tabanlı ──────────────────────
-  // Her segment için: o segmentteki kat sayısı × daire/kat oranıyla segFlats bulunur.
-  // Her kat için hatSayFittings adet Te eklenir (sıcak + soğuk hattı).
-  // Çap eşleşmesine göre Equal Te (t{NN}) veya İnegal Te (ite{main}{branch}) seçilir.
+  // Paralel model: Her zone kendi riseridir. Boru shaftStart'tan zone.to'ya uzanır,
+  // ama Te yalnızca dairelerin bulunduğu katlarda (zone.from → zone.to) takılır.
+  //
+  // Her segment için:
+  //   firstAptRel = zone.from - shaftStart + 1   (ilk daireli katın göreli indeksi)
+  //   aptKats     = segmentte firstAptRel üzerinde kalan kat sayısı
+  //   count       = aptKats × hatSayFittings × totalShaft
   const hatSayFittings = (hasHot ? 1 : 0) + (hasCold ? 1 : 0);
-  const segFloorTotal = allSegs.reduce((s, seg) => s + seg.kats, 0);
-  if (segFloorTotal > 0 && hatSayFittings > 0) {
+  if (hatSayFittings > 0) {
     allSegs.forEach(seg => {
-      const segFlats = Math.ceil(totalFlats * seg.kats / segFloorTotal);
-      const count = segFlats * hatSayFittings * totalShaft;
+      const zone        = activeZones[seg.zone] || {};
+      const zoneFrom    = zone.from ?? shaftStart;
+      const firstAptRel = Math.max(1, zoneFrom - shaftStart + 1); // ≥ 1
+      // Segmentte firstAptRel'den itibaren kaç kat var?
+      const aptKats = Math.max(0, seg.katTo - Math.max(seg.katFrom - 1, firstAptRel - 1));
+      if (aptKats <= 0) return;
+
+      const count = aptKats * hatSayFittings * totalShaft;
       if (seg.diam === brDiam) {
         const tId = 't' + seg.diam.slice(1);
         QTY[tId] = (QTY[tId] || 0) + count;
@@ -280,18 +289,18 @@ export function calculate(config, priceOverride = {}) {
   const kelepMap = {}; // diam → toplam metre (kelepçe hesabı için)
   const addKelep = (d, m) => { if (d && m > 0) kelepMap[d] = (kelepMap[d] || 0) + m; };
 
-  // Yatay borular
+  // Yatay borular — blokMult ile çarpılır (her bina kendi yatay hattına sahip)
   if (hasHot) {
-    addKelep(hyHotStart, hyHotL1 || 0);
-    addKelep(hyHotD2,    hyHotL2 || 0);
-    addKelep(hyHotD3,    hyHotL3 || 0);
+    addKelep(hyHotStart, (hyHotL1 || 0) * blokMult);
+    addKelep(hyHotD2,    (hyHotL2 || 0) * blokMult);
+    addKelep(hyHotD3,    (hyHotL3 || 0) * blokMult);
   }
   if (hasCold) {
-    addKelep(hyColdStart, hyColdL1 || 0);
-    addKelep(hyColdD2,    hyColdL2 || 0);
-    addKelep(hyColdD3,    hyColdL3 || 0);
+    addKelep(hyColdStart, (hyColdL1 || 0) * blokMult);
+    addKelep(hyColdD2,    (hyColdL2 || 0) * blokMult);
+    addKelep(hyColdD3,    (hyColdL3 || 0) * blokMult);
   }
-  if (hasCirc) addKelep(circDiam, circYatay || 0);
+  if (hasCirc) addKelep(circDiam, (circYatay || 0) * blokMult);
 
   // Dikey borular (şaft kolonu)
   const hatSayV = (hasHot ? 1 : 0) + (hasCold ? 1 : 0);
