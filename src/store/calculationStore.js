@@ -77,19 +77,20 @@ export const DEFAULT_CONFIG = {
   shaft4katCk:   false,
 
   // Branşman
-  brDiam:  'q25',
-  brHot:   2,
-  brCold:  2,
+  brDiam:   'q25',
+  brHot:    2,
+  brCold:   2,
+  dFitDiam: 'q25', // Daire sayaç bağlantısı çapı (boru çapından bağımsız seçilebilir)
   dHotmeter:  1,
   dColdmeter: 1,
-  dAda:     1,   // Dış dişli adaptör büyük (sayaç girişi)
-  dAda2:    1,   // Dış dişli adaptör küçük (sayaç çıkışı)
-  dFilt:    1,
-  dCv:      1,
-  dNip:     0,   // Daire nipeli yok — ½" nipel yalnızca termo/mano için (mechanical.js)
+  dAda:     1,   // Dış dişli adaptör (sayaç girişi)
+  dAda2:    1,   // Dış dişli adaptör (sayaç çıkışı)
+  dFilt:    1,   // Pislik tutucu / filtre
+  dCv:      0,   // Çek valf (0=yok)
+  dNip:     1,   // Sarı nipel (sayaç başına)
   dSaatrek: 1,
-  dValveIn: 1,   // Ana kesme vanası - sayaç önü (branşman çapı)
-  dValve:   1,   // İkinci vana - sayaç arkası (bir küçük çap)
+  dValveIn: 1,   // Kesme vanası - sayaç önü
+  dValve:   1,   // Kesme vanası - sayaç arkası
 
   // Kelepçe ve montaj donanımı
   kelepceSpacing:   4,     // metre cinsinden kelepçe aralığı (varsayılan 4m)

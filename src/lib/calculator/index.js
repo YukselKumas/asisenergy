@@ -33,6 +33,7 @@ export function calculate(config, priceOverride = {}) {
     hyColdStart, hyColdL1, hyColdD2, hyColdL2, hyColdD3, hyColdL3,
     circDiam, circYatay,
     brDiam, brHot, brCold,
+    dFitDiam,    // Daire sayaç bağlantısı çapı (boru çapından bağımsız)
     katsayilar,
     kolektors,   // [{hatId, zoneIdx, mat, kdiam, rows:[{vd,hasCv}], kepAdet}]
     shaftVanaMat, shaftVanaDiam, shaftVanaAdet, shaft4katCk,
@@ -169,26 +170,28 @@ export function calculate(config, priceOverride = {}) {
   });
 
   // ── 7. Daire sayaç grubu ──────────────────────────────────────────
+  // dFitDiam: tüm daire sayaç armatürlerinin çapı (boru çapından bağımsız seçilebilir)
+  const fd = dFitDiam || brDiam || 'q25';
   const sayacTotal  = totalFlats * ((hasHot ? dHotmeter : 0) + (hasCold ? dColdmeter : 0));
-  const dAdaQ       = Math.ceil(sayacTotal * (dAda      ?? 1));
-  const dAda2Q      = Math.ceil(sayacTotal * (dAda2     ?? 1));
+  const dAdaQ       = Math.ceil(sayacTotal * (dAda   ?? 1));
+  const dAda2Q      = Math.ceil(sayacTotal * (dAda2  ?? 1));
   const dFiltQ      = Math.ceil(sayacTotal * dFilt);
   const dCvQ        = Math.ceil(sayacTotal * dCv);
-  const dNipQ       = Math.ceil(dCvQ * dNip);
+  const dNipQ       = Math.ceil(sayacTotal * dNip);   // sayaç başına — CV'ye bağlı değil
   const dSaatrekQ   = Math.ceil(sayacTotal * dSaatrek);
-  const dValveInQ   = Math.ceil(sayacTotal * (dValveIn  ?? 1));  // Ana kesme — sayaç önü (branşman çapı)
-  const dValveQ     = Math.ceil(sayacTotal * dValve);             // İkinci vana — sayaç arkası (bir küçük)
+  const dValveInQ   = Math.ceil(sayacTotal * (dValveIn ?? 1));
+  const dValveQ     = Math.ceil(sayacTotal * dValve);
 
-  // Büyük adaptör = branşman çapı, küçük = bir boy küçük
-  const adaDaire    = 'ada' + brDiam.replace('q','');
-  const adaDaire2   = brDiam === 'q20' ? 'ada20' : 'ada25';  // bir küçük → q25/¾" (q20 için ada20)
-  const filtDaire   = brDiam === 'q32' ? 'f1'   : 'f34';
-  const cvDaire     = brDiam === 'q32' ? 'cv1'  : 'cv34';
-  const nipDaire    = brDiam === 'q32' ? 'n114' : 'n34';
-  const saatDaire   = brDiam === 'q32' ? 'saatrek32' : 'saatrek25';
-  // Ana kesme vanası = branşman çapı; ikinci vana = aynı çap (½" sadece termo/mano için)
-  const vanaInDaire = brDiam === 'q32' ? 'pir-v1'  : brDiam === 'q25' ? 'pir-v34' : 'pir-v34';
-  const vanaDaire   = brDiam === 'q32' ? 'pir-v34' : 'pir-v34';  // ¾" minimum — ½" yalnızca enstrüman
+  // Tüm armatürler dFitDiam çapında — aynı çap, tutarlı bağlantı
+  const adaDaire    = 'ada' + fd.replace('q', '');
+  const adaDaire2   = adaDaire;  // aynı çap (giriş = çıkış)
+  const filtDaire   = fd === 'q32' ? 'f1'        : 'f34';
+  const cvDaire     = fd === 'q32' ? 'cv1'       : 'cv34';
+  const nipDaire    = fd === 'q32' ? 'n114'      : fd === 'q20' ? 'n12' : 'n34';
+  const saatDaire   = fd === 'q32' ? 'saatrek32' : 'saatrek25';
+  // Vanalar: dFitDiam çapında — ½" (pir-v12) yalnızca enstrüman bağlantısında
+  const vanaInDaire = fd === 'q32' ? 'pir-v1' : fd === 'q25' ? 'pir-v34' : 'pir-v34';
+  const vanaDaire   = vanaInDaire;  // aynı çap
 
   QTY[adaDaire]    = (QTY[adaDaire]   ||0) + dAdaQ;
   QTY[adaDaire2]   = (QTY[adaDaire2]  ||0) + dAda2Q;
