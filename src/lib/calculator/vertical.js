@@ -48,11 +48,12 @@ export function calcVertSegments(floorCount, floorH, step, startDiam, minDiam) {
 /**
  * Tüm zone'ların segment listesini birleştirir.
  *
- * STACKED MODEL: Her zone sadece kendi kat aralığını (zone.from → zone.to) hesaplar.
- *   Zone 0 : shaftStart'tan zone0.to'ya kadar (tüm bina temeli)
- *   Zone 1+: zone.from'dan zone.to'ya kadar (ek bölüm — önceki zone üstüne biner)
+ * PARALEL MODEL: Her zone kendi bağımsız riseridir.
+ *   - Fiziksel boru: shaftStart'tan zone.to'ya kadar (tam yükseklik).
+ *   - Servis aralığı: zone.from → zone.to (dairelerin bulunduğu katlar).
  *
- * Bu sayede çok zonlu sistemde aynı kat aralığı iki kez sayılmaz.
+ * zone.from → boru uzunluğunu değil, Te/branşman hesabını etkiler.
+ * zone.to   → riserin fiziksel bitiş katı.
  *
  * @param {Array}  zones      - [{from, to, startDiam, minDiam}]
  * @param {number} floorH     - kat yüksekliği
@@ -64,10 +65,8 @@ export function calcAllSegments(zones, floorH, step, shaftStart = 1) {
   const allSegs = [];
 
   zones.forEach((zone, i) => {
-    // Zone 0: şaft tabanından zone.to'ya kadar (tüm yükseklik)
-    // Zone 1+: zone.from'dan zone.to'ya kadar (sadece bu zone'un ek bölümü)
-    const zoneStart  = i === 0 ? shaftStart : Math.max(shaftStart, zone.from ?? shaftStart);
-    const floorCount = Math.max(0, zone.to - zoneStart + 1);
+    // Riser fiziksel olarak şaft tabanından zone.to'ya kadar uzanır
+    const floorCount = Math.max(0, zone.to - shaftStart + 1);
     const segs = calcVertSegments(floorCount, floorH, step, zone.startDiam, zone.minDiam);
     segs.forEach(s => allSegs.push({ ...s, zone: i }));
   });

@@ -122,13 +122,24 @@ export function calculate(config, priceOverride = {}) {
   });
 
   // ── 6. Şaft başı branşman Te — fizik tabanlı ──────────────────────
-  // Her katta risere 1 Te takılır (daire sayısından bağımsız — her kat = 1 dal).
-  // count = seg.kats (o segmentteki kat sayısı) × hat sayısı × toplam şaft.
-  // Çap eşleşmesine göre Equal Te (t{NN}) veya İnegal Te (ite{main}{branch}) seçilir.
+  // Paralel model: Her zone kendi riseridir. Boru shaftStart'tan zone.to'ya uzanır,
+  // ama Te yalnızca dairelerin bulunduğu katlarda (zone.from → zone.to) takılır.
+  //
+  // Her segment için:
+  //   firstAptRel = zone.from - shaftStart + 1   (ilk daireli katın göreli indeksi)
+  //   aptKats     = segmentte firstAptRel üzerinde kalan kat sayısı
+  //   count       = aptKats × hatSayFittings × totalShaft
   const hatSayFittings = (hasHot ? 1 : 0) + (hasCold ? 1 : 0);
   if (hatSayFittings > 0) {
     allSegs.forEach(seg => {
-      const count = seg.kats * hatSayFittings * totalShaft;
+      const zone        = activeZones[seg.zone] || {};
+      const zoneFrom    = zone.from ?? shaftStart;
+      const firstAptRel = Math.max(1, zoneFrom - shaftStart + 1); // ≥ 1
+      // Segmentte firstAptRel'den itibaren kaç kat var?
+      const aptKats = Math.max(0, seg.katTo - Math.max(seg.katFrom - 1, firstAptRel - 1));
+      if (aptKats <= 0) return;
+
+      const count = aptKats * hatSayFittings * totalShaft;
       if (seg.diam === brDiam) {
         const tId = 't' + seg.diam.slice(1);
         QTY[tId] = (QTY[tId] || 0) + count;
