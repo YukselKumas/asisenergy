@@ -189,10 +189,14 @@ export function Step1System({ goStep }) {
               style={{ borderColor: !c.floorH ? 'var(--warn)' : undefined }}
               onChange={e => updN('floorH', e.target.value)} />
           </Field>
-          <Field label="Şaft Sayısı" hint="Kolektör çıkış adedine eşit">
+          <Field label="Şaft Sayısı" hint={(c.blokSayisi > 1) ? "Bina başına kolektör çıkış adedi" : "Kolektör çıkış adedine eşit"}>
             <input type="number" value={c.shaft} min="1" placeholder="örn: 4"
               style={{ borderColor: !c.shaft ? 'var(--warn)' : undefined }}
               onChange={e => updN('shaft', e.target.value)} />
+          </Field>
+          <Field label="Bina Sayısı" hint="Tek ısı merkezinden beslenen bina adedi">
+            <input type="number" value={c.blokSayisi ?? 1} min="1" placeholder="1"
+              onChange={e => updN('blokSayisi', e.target.value)} />
           </Field>
         </div>
       </Card>

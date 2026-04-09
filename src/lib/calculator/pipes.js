@@ -19,19 +19,20 @@ export function emptyPipeMap() {
  * @param {boolean} hasCirc
  * @param {Object} cfg    - form değerleri
  */
-export function addHorizontalPipes(pipe, hasHot, hasCold, hasCirc, cfg) {
+export function addHorizontalPipes(pipe, hasHot, hasCold, hasCirc, cfg, blokMult = 1) {
+  const m = blokMult || 1;
   if (hasHot) {
-    addIfPositive(pipe, cfg.hyHotStart, cfg.hyHotL1);
-    addIfPositive(pipe, cfg.hyHotD2,    cfg.hyHotL2);
-    addIfPositive(pipe, cfg.hyHotD3,    cfg.hyHotL3);
+    addIfPositive(pipe, cfg.hyHotStart, (cfg.hyHotL1 || 0) * m);
+    addIfPositive(pipe, cfg.hyHotD2,    (cfg.hyHotL2 || 0) * m);
+    addIfPositive(pipe, cfg.hyHotD3,    (cfg.hyHotL3 || 0) * m);
   }
   if (hasCold) {
-    addIfPositive(pipe, cfg.hyColdStart, cfg.hyColdL1);
-    addIfPositive(pipe, cfg.hyColdD2,    cfg.hyColdL2);
-    addIfPositive(pipe, cfg.hyColdD3,    cfg.hyColdL3);
+    addIfPositive(pipe, cfg.hyColdStart, (cfg.hyColdL1 || 0) * m);
+    addIfPositive(pipe, cfg.hyColdD2,    (cfg.hyColdL2 || 0) * m);
+    addIfPositive(pipe, cfg.hyColdD3,    (cfg.hyColdL3 || 0) * m);
   }
   if (hasCirc) {
-    addIfPositive(pipe, cfg.circDiam, cfg.circYatay);
+    addIfPositive(pipe, cfg.circDiam, (cfg.circYatay || 0) * m);
   }
 }
 
