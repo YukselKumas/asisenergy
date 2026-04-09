@@ -86,7 +86,7 @@ export const DEFAULT_CONFIG = {
   dAda2:    1,   // Dış dişli adaptör küçük (sayaç çıkışı)
   dFilt:    1,
   dCv:      1,
-  dNip:     2,
+  dNip:     0,   // Daire nipeli yok — ½" nipel yalnızca termo/mano için (mechanical.js)
   dSaatrek: 1,
   dValveIn: 1,   // Ana kesme vanası - sayaç önü (branşman çapı)
   dValve:   1,   // İkinci vana - sayaç arkası (bir küçük çap)

@@ -130,8 +130,19 @@ export function applyBdToQty(QTY, zones, floors) {
  */
 export function applyFixedMechToQty(QTY, cfg) {
   QTY['pump'] = (QTY['pump'] || 0) + Math.ceil(cfg.pump  || 0);
-  QTY['mano'] = (QTY['mano'] || 0) + Math.ceil(cfg.mano  || 0);
-  QTY['term'] = (QTY['term'] || 0) + Math.ceil(cfg.term  || 0);
+
+  const manoAdet = Math.ceil(cfg.mano || 0);
+  const termAdet = Math.ceil(cfg.term || 0);
+  QTY['mano'] = (QTY['mano'] || 0) + manoAdet;
+  QTY['term'] = (QTY['term'] || 0) + termAdet;
+
+  // Her manometre ve termometre için 1× ½" küresel vana + 1× ½" nipel
+  const instrAdet = manoAdet + termAdet;
+  if (instrAdet > 0) {
+    QTY['pir-v12'] = (QTY['pir-v12'] || 0) + instrAdet;
+    QTY['n12']     = (QTY['n12']     || 0) + instrAdet;
+  }
+
   QTY['air']  = (QTY['air']  || 0) + Math.ceil(cfg.air   || 0);
 
   const mainfDiam = cfg.mainfDiam || 'f114';

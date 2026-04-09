@@ -186,9 +186,9 @@ export function calculate(config, priceOverride = {}) {
   const cvDaire     = brDiam === 'q32' ? 'cv1'  : 'cv34';
   const nipDaire    = brDiam === 'q32' ? 'n114' : 'n34';
   const saatDaire   = brDiam === 'q32' ? 'saatrek32' : 'saatrek25';
-  // Ana kesme vanası = branşman çapı; ikinci vana = bir küçük çap
-  const vanaInDaire = brDiam === 'q32' ? 'pir-v1'  : brDiam === 'q25' ? 'pir-v34' : 'pir-v12';
-  const vanaDaire   = brDiam === 'q32' ? 'pir-v34' : 'pir-v12';
+  // Ana kesme vanası = branşman çapı; ikinci vana = aynı çap (½" sadece termo/mano için)
+  const vanaInDaire = brDiam === 'q32' ? 'pir-v1'  : brDiam === 'q25' ? 'pir-v34' : 'pir-v34';
+  const vanaDaire   = brDiam === 'q32' ? 'pir-v34' : 'pir-v34';  // ¾" minimum — ½" yalnızca enstrüman
 
   QTY[adaDaire]    = (QTY[adaDaire]   ||0) + dAdaQ;
   QTY[adaDaire2]   = (QTY[adaDaire2]  ||0) + dAda2Q;
