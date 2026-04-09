@@ -46,20 +46,28 @@ export function calcVertSegments(floorCount, floorH, step, startDiam, minDiam) {
 }
 
 /**
- * Tüm zone'ların segment listesini birleştirir ve şaft başına toplam metrajı döndürür.
- * Her zone şaft tabanından (shaftStart) kendi bitiş katına (zone.to) kadar boru çeker.
+ * Tüm zone'ların segment listesini birleştirir.
+ *
+ * STACKED MODEL: Her zone sadece kendi kat aralığını (zone.from → zone.to) hesaplar.
+ *   Zone 0 : shaftStart'tan zone0.to'ya kadar (tüm bina temeli)
+ *   Zone 1+: zone.from'dan zone.to'ya kadar (ek bölüm — önceki zone üstüne biner)
+ *
+ * Bu sayede çok zonlu sistemde aynı kat aralığı iki kez sayılmaz.
+ *
  * @param {Array}  zones      - [{from, to, startDiam, minDiam}]
  * @param {number} floorH     - kat yüksekliği
  * @param {number} step       - çap küçülme adımı
- * @param {number} shaftStart - binanın başlangıç kat numarası (varsayılan: 1)
- * @returns {Array<{diam, m, zone}>}
+ * @param {number} shaftStart - mekanik oda / şaft başlangıç kat numarası
+ * @returns {Array<{diam, kats, katFrom, katTo, m, zone}>}
  */
 export function calcAllSegments(zones, floorH, step, shaftStart = 1) {
   const allSegs = [];
 
   zones.forEach((zone, i) => {
-    // Boru fiziksel olarak şaft tabanından (shaftStart) zone'un bitiş katına kadar uzanır
-    const floorCount = Math.max(0, zone.to - shaftStart + 1);
+    // Zone 0: şaft tabanından zone.to'ya kadar (tüm yükseklik)
+    // Zone 1+: zone.from'dan zone.to'ya kadar (sadece bu zone'un ek bölümü)
+    const zoneStart  = i === 0 ? shaftStart : Math.max(shaftStart, zone.from ?? shaftStart);
+    const floorCount = Math.max(0, zone.to - zoneStart + 1);
     const segs = calcVertSegments(floorCount, floorH, step, zone.startDiam, zone.minDiam);
     segs.forEach(s => allSegs.push({ ...s, zone: i }));
   });
