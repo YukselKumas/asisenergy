@@ -18,16 +18,11 @@ export function Step4Equipment({ goStep }) {
   }
 
   function autoFill() {
-    const hasHot  = config.hasHot;
-    const hasCold = config.hasCold;
-    const hatSay  = (hasHot ? 1 : 0) + (hasCold ? 1 : 0);
     setConfig({
       katsayilar: {
         ...k,
-        kTee:  hatSay * 2,
-        kItee: hatSay * 1,
-        kRed:  hatSay * 2,
-        kCous: hatSay * 2,
+        kRed:  2,
+        kCous: 2,
       }
     });
   }
@@ -63,16 +58,7 @@ export function Step4Equipment({ goStep }) {
           <Button variant="default" style={{ padding:'3px 10px', fontSize:11 }} onClick={autoFill}>↺ Otomatik Doldur</Button>
         </p>
         <div className="al al-i" style={{ marginBottom:12, fontSize:11 }}>
-          ℹ Manşon ve redüksiyon artık fizik tabanlı hesaplanır: her 4 m'de 1 manşon, her çap düşüşünde 1 redüksiyon.
-        </div>
-        <div className="slbl" style={{ marginTop:0 }}>Şaft Başı Te (adet / şaft × hat sayısı)</div>
-        <div className="g g4">
-          <Field label="Equal Te / şaft" hint={`→ ${(config.hasHot?1:0)+(config.hasCold?1:0)} hat × 2`}>
-            <input type="number" min="0" value={k.kTee  ?? 3} onChange={e => updK('kTee',  e.target.value)} />
-          </Field>
-          <Field label="İnegal Te / şaft" hint="Dal branşman noktaları">
-            <input type="number" min="0" value={k.kItee ?? 2} onChange={e => updK('kItee', e.target.value)} />
-          </Field>
+          ℹ Branşman Te'leri artık fizik tabanlı hesaplanır: her kat × hat başına 1 Te, çap uyumuna göre Equal Te veya İnegal Te seçilir. Manşon: her 4 m'de 1. Redüksiyon: her çap geçişinde 1.
         </div>
       </Card>
 

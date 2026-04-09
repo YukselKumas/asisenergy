@@ -23,7 +23,8 @@ export const DEFAULT_CONFIG = {
   firstFloor:   1,     // Daire başlangıç katı (Step 3 kat tablosu için)
   shaftFloor:   1,     // Şaft / mekanik oda başlangıç katı (boru metrajı için, negatif olabilir)
   floorH:       '',
-  shaft:        '',
+  shaft:        '',    // Bina başına şaft sayısı
+  blokSayisi:   1,     // Isı merkezinden beslenen bina sayısı (tek merkez → çok bina)
 
   // Mekanik oda
   depoAdet:       1,
@@ -76,19 +77,20 @@ export const DEFAULT_CONFIG = {
   shaft4katCk:   false,
 
   // Branşman
-  brDiam:  'q25',
-  brHot:   2,
-  brCold:  2,
+  brDiam:   'q25',
+  brHot:    2,
+  brCold:   2,
+  dFitDiam: 'q25', // Daire sayaç bağlantısı çapı (boru çapından bağımsız seçilebilir)
   dHotmeter:  1,
   dColdmeter: 1,
-  dAda:     1,   // Dış dişli adaptör büyük (sayaç girişi)
-  dAda2:    1,   // Dış dişli adaptör küçük (sayaç çıkışı)
-  dFilt:    1,
-  dCv:      1,
-  dNip:     2,
+  dAda:     1,   // Dış dişli adaptör (sayaç girişi)
+  dAda2:    1,   // Dış dişli adaptör (sayaç çıkışı)
+  dFilt:    1,   // Pislik tutucu / filtre
+  dCv:      0,   // Çek valf (0=yok)
+  dNip:     1,   // Sarı nipel (sayaç başına)
   dSaatrek: 1,
-  dValveIn: 1,   // Ana kesme vanası - sayaç önü (branşman çapı)
-  dValve:   1,   // İkinci vana - sayaç arkası (bir küçük çap)
+  dValveIn: 1,   // Kesme vanası - sayaç önü
+  dValve:   1,   // Kesme vanası - sayaç arkası
 
   // Kelepçe ve montaj donanımı
   kelepceSpacing:   4,     // metre cinsinden kelepçe aralığı (varsayılan 4m)
@@ -114,9 +116,6 @@ export const DEFAULT_CONFIG = {
     // Dirsek katsayıları (adet / 10m) — çap bazında
     h110:0.5, h90:0.8, h75:1.0, h63:1.5, h50:1.5, h40:2.0, h32:2.0, h25:2.0,
     v110:0.3, v90:0.5, v75:0.5, v63:0.5, v50:0.8, v40:1.0, v32:1.0, v25:1.2,
-    // Şaft başı te katsayıları (adet / şaft × hat)
-    // Manşon ve redüksiyon artık fizik tabanlı hesaplanıyor (4m/adet, çap geçişi)
-    kTee:3, kItee:2,
   },
 
   // Adım 5 — Fiyat geçersizlemeleri

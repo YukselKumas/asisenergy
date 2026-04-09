@@ -177,6 +177,7 @@ export const PRICES = [
   /* Sarı Nipel */
   {id:'n114',    cat:'baglanti',n:'1¼" SARI NİPEL',              u:'adet', list:280.38, disc:0},
   {id:'n34',     cat:'baglanti',n:'¾" SARI NİPEL',               u:'adet', list:75.56,  disc:0},
+  {id:'n12',     cat:'baglanti',n:'½" SARI NİPEL',               u:'adet', list:45.00,  disc:0},
   /* PPR Kolektörler */
   {id:'kol-ppr-250',cat:'mekanik',n:'250MM PPR KOLEKTÖR',        u:'adet', list:0, disc:0},
   {id:'kol-ppr-225',cat:'mekanik',n:'225MM PPR KOLEKTÖR',        u:'adet', list:0, disc:0},

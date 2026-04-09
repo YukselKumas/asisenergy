@@ -9,7 +9,7 @@
 import { DIAM_ORDER } from './constants.js';
 import { calcAllSegments }                                    from './vertical.js';
 import { emptyPipeMap, addHorizontalPipes, addVerticalPipes, addBranchPipes } from './pipes.js';
-import { calcElbows, calcShaftFittings, applyFittingsToQty, calcCouplings, calcReductions } from './fittings.js';
+import { calcElbows, calcCouplings, calcReductions } from './fittings.js';
 import { processKolektorRows }                               from './kollector.js';
 import { pirVanaId }                                         from './kollector.js';
 import { pprVanaId, applyHidroforToQty, applyBoylerToQty, applyBdToQty, applyFixedMechToQty } from './mechanical.js';
@@ -33,6 +33,7 @@ export function calculate(config, priceOverride = {}) {
     hyColdStart, hyColdL1, hyColdD2, hyColdL2, hyColdD3, hyColdL3,
     circDiam, circYatay,
     brDiam, brHot, brCold,
+    dFitDiam,    // Daire sayaç bağlantısı çapı (boru çapından bağımsız)
     katsayilar,
     kolektors,   // [{hatId, zoneIdx, mat, kdiam, rows:[{vd,hasCv}], kepAdet}]
     shaftVanaMat, shaftVanaDiam, shaftVanaAdet, shaft4katCk,
@@ -44,7 +45,12 @@ export function calculate(config, priceOverride = {}) {
     kelepceSpacing,
     hotDownFloors, hotDownDiam,
     coldDownFloors, coldDownDiam,
+    blokSayisi,
   } = config;
+
+  // Çok binalı destek: shaft = bina başına şaft; totalShaft = tüm binaların toplam şaft sayısı
+  const blokMult   = blokSayisi || 1;
+  const totalShaft = (shaft || 1) * blokMult;
 
   const circFlat = 0; // Daire başı bağlantı kaldırıldı
 
@@ -73,9 +79,9 @@ export function calculate(config, priceOverride = {}) {
     hyHotStart, hyHotL1, hyHotD2, hyHotL2, hyHotD3, hyHotL3,
     hyColdStart, hyColdL1, hyColdD2, hyColdL2, hyColdD3, hyColdL3,
     circDiam, circYatay,
-  });
+  }, blokMult);
 
-  addVerticalPipes(pipe, allSegs, shaft, hasHot, hasCold, hasCirc, {
+  addVerticalPipes(pipe, allSegs, totalShaft, hasHot, hasCold, hasCirc, {
     circDiam, circDikey: autoCircDikey, circFlat, totalFlats,
   });
 
@@ -87,15 +93,15 @@ export function calculate(config, priceOverride = {}) {
   const pipeYatay = emptyPipeMap();
   const pipeDikey = emptyPipeMap();
 
-  if (hasHot)  [[hyHotStart, hyHotL1],[hyHotD2, hyHotL2],[hyHotD3, hyHotL3]].forEach(([d,l]) => { if(d) pipeYatay[d] = (pipeYatay[d]||0)+l; });
-  if (hasCold) [[hyColdStart,hyColdL1],[hyColdD2,hyColdL2],[hyColdD3,hyColdL3]].forEach(([d,l])=>{ if(d) pipeYatay[d]=(pipeYatay[d]||0)+l; });
-  if (hasCirc) pipeYatay[circDiam] = (pipeYatay[circDiam]||0) + circYatay;
+  if (hasHot)  [[hyHotStart, hyHotL1],[hyHotD2, hyHotL2],[hyHotD3, hyHotL3]].forEach(([d,l]) => { if(d) pipeYatay[d] = (pipeYatay[d]||0)+l*blokMult; });
+  if (hasCold) [[hyColdStart,hyColdL1],[hyColdD2,hyColdL2],[hyColdD3,hyColdL3]].forEach(([d,l])=>{ if(d) pipeYatay[d]=(pipeYatay[d]||0)+l*blokMult; });
+  if (hasCirc) pipeYatay[circDiam] = (pipeYatay[circDiam]||0) + circYatay*blokMult;
 
   allSegs.forEach(s => {
-    if (hasHot)  pipeDikey[s.diam] = (pipeDikey[s.diam]||0) + s.m*shaft;
-    if (hasCold) pipeDikey[s.diam] = (pipeDikey[s.diam]||0) + s.m*shaft;
+    if (hasHot)  pipeDikey[s.diam] = (pipeDikey[s.diam]||0) + s.m*totalShaft;
+    if (hasCold) pipeDikey[s.diam] = (pipeDikey[s.diam]||0) + s.m*totalShaft;
   });
-  if (hasCirc) pipeDikey[circDiam] = (pipeDikey[circDiam]||0) + autoCircDikey*shaft;
+  if (hasCirc) pipeDikey[circDiam] = (pipeDikey[circDiam]||0) + autoCircDikey*totalShaft;
   if (hasHot)  pipeDikey[brDiam]   = (pipeDikey[brDiam]  ||0) + brHot*totalFlats;
   if (hasCold) pipeDikey[brDiam]   = (pipeDikey[brDiam]  ||0) + brCold*totalFlats;
 
@@ -115,10 +121,29 @@ export function calculate(config, priceOverride = {}) {
     if (elbows[d] > 0) QTY[eid] = (QTY[eid]||0) + elbows[d];
   });
 
-  // ── 6. Şaft başı ek parçalar ───────────────────────────────────────
+  // ── 6. Şaft başı branşman Te — fizik tabanlı ──────────────────────
+  // Her segment için: o segmentteki kat sayısı × daire/kat oranıyla segFlats bulunur.
+  // Her kat için hatSayFittings adet Te eklenir (sıcak + soğuk hattı).
+  // Çap eşleşmesine göre Equal Te (t{NN}) veya İnegal Te (ite{main}{branch}) seçilir.
   const hatSayFittings = (hasHot ? 1 : 0) + (hasCold ? 1 : 0);
-  const { teeTotal, iteeTotal } = calcShaftFittings(shaft, hatSayFittings, katsayilar);
-  applyFittingsToQty(QTY, teeTotal, iteeTotal);
+  const segFloorTotal = allSegs.reduce((s, seg) => s + seg.kats, 0);
+  if (segFloorTotal > 0 && hatSayFittings > 0) {
+    allSegs.forEach(seg => {
+      const segFlats = Math.ceil(totalFlats * seg.kats / segFloorTotal);
+      const count = segFlats * hatSayFittings * totalShaft;
+      if (seg.diam === brDiam) {
+        const tId = 't' + seg.diam.slice(1);
+        QTY[tId] = (QTY[tId] || 0) + count;
+      } else {
+        const dimIdx1 = DIAM_ORDER.indexOf(seg.diam);
+        const dimIdx2 = DIAM_ORDER.indexOf(brDiam);
+        const mainD   = dimIdx1 > dimIdx2 ? seg.diam : brDiam;
+        const branchD = dimIdx1 > dimIdx2 ? brDiam   : seg.diam;
+        const iteId   = 'ite' + mainD.slice(1) + branchD.slice(1);
+        QTY[iteId] = (QTY[iteId] || 0) + count;
+      }
+    });
+  }
 
   // ── 6a. Manşon — fizik tabanlı (her 4m boru = 1 manşon) ──────────
   const couplings = calcCouplings(pipe);
@@ -138,33 +163,35 @@ export function calculate(config, priceOverride = {}) {
     if (hyColdD2 && hyColdL2 > 0) hyTrans.push([hyColdStart, hyColdD2]);
     if (hyColdD3 && hyColdL3 > 0) hyTrans.push([hyColdD2 || hyColdStart, hyColdD3]);
   }
-  const reductions = calcReductions(allSegs, shaft, hatSayFittings, hyTrans);
+  const reductions = calcReductions(allSegs, totalShaft, hatSayFittings, hyTrans);
   Object.entries(reductions).forEach(([rId, qty]) => {
     if (QTY[rId] !== undefined) QTY[rId] = (QTY[rId] || 0) + qty;
     else QTY[rId] = qty;
   });
 
   // ── 7. Daire sayaç grubu ──────────────────────────────────────────
+  // dFitDiam: tüm daire sayaç armatürlerinin çapı (boru çapından bağımsız seçilebilir)
+  const fd = dFitDiam || brDiam || 'q25';
   const sayacTotal  = totalFlats * ((hasHot ? dHotmeter : 0) + (hasCold ? dColdmeter : 0));
-  const dAdaQ       = Math.ceil(sayacTotal * (dAda      ?? 1));
-  const dAda2Q      = Math.ceil(sayacTotal * (dAda2     ?? 1));
+  const dAdaQ       = Math.ceil(sayacTotal * (dAda   ?? 1));
+  const dAda2Q      = Math.ceil(sayacTotal * (dAda2  ?? 1));
   const dFiltQ      = Math.ceil(sayacTotal * dFilt);
   const dCvQ        = Math.ceil(sayacTotal * dCv);
-  const dNipQ       = Math.ceil(dCvQ * dNip);
+  const dNipQ       = Math.ceil(sayacTotal * dNip);   // sayaç başına — CV'ye bağlı değil
   const dSaatrekQ   = Math.ceil(sayacTotal * dSaatrek);
-  const dValveInQ   = Math.ceil(sayacTotal * (dValveIn  ?? 1));  // Ana kesme — sayaç önü (branşman çapı)
-  const dValveQ     = Math.ceil(sayacTotal * dValve);             // İkinci vana — sayaç arkası (bir küçük)
+  const dValveInQ   = Math.ceil(sayacTotal * (dValveIn ?? 1));
+  const dValveQ     = Math.ceil(sayacTotal * dValve);
 
-  // Büyük adaptör = branşman çapı, küçük = bir boy küçük
-  const adaDaire    = 'ada' + brDiam.replace('q','');
-  const adaDaire2   = brDiam === 'q32' ? 'ada25' : 'ada25';  // bir küçük → q25/¾"
-  const filtDaire   = brDiam === 'q32' ? 'f1'   : 'f34';
-  const cvDaire     = brDiam === 'q32' ? 'cv1'  : 'cv34';
-  const nipDaire    = brDiam === 'q32' ? 'n114' : 'n34';
-  const saatDaire   = brDiam === 'q32' ? 'saatrek32' : 'saatrek25';
-  // Ana kesme vanası = branşman çapı; ikinci vana = bir küçük çap
-  const vanaInDaire = brDiam === 'q32' ? 'pir-v1'  : brDiam === 'q25' ? 'pir-v34' : 'pir-v12';
-  const vanaDaire   = brDiam === 'q32' ? 'pir-v34' : 'pir-v12';
+  // Tüm armatürler dFitDiam çapında — aynı çap, tutarlı bağlantı
+  const adaDaire    = 'ada' + fd.replace('q', '');
+  const adaDaire2   = adaDaire;  // aynı çap (giriş = çıkış)
+  const filtDaire   = fd === 'q32' ? 'f1'        : 'f34';
+  const cvDaire     = fd === 'q32' ? 'cv1'       : 'cv34';
+  const nipDaire    = fd === 'q32' ? 'n114'      : fd === 'q20' ? 'n12' : 'n34';
+  const saatDaire   = fd === 'q32' ? 'saatrek32' : 'saatrek25';
+  // Vanalar: dFitDiam çapında — ½" (pir-v12) yalnızca enstrüman bağlantısında
+  const vanaInDaire = fd === 'q32' ? 'pir-v1' : fd === 'q25' ? 'pir-v34' : 'pir-v34';
+  const vanaDaire   = vanaInDaire;  // aynı çap
 
   QTY[adaDaire]    = (QTY[adaDaire]   ||0) + dAdaQ;
   QTY[adaDaire2]   = (QTY[adaDaire2]  ||0) + dAda2Q;
@@ -188,7 +215,7 @@ export function calculate(config, priceOverride = {}) {
   const svHatlar = (hasHot ? 1 : 0) + (hasCold ? 1 : 0);
   if (svHatlar > 0 && shaftVanaAdet > 0) {
     const svId = shaftVanaMat === 'ppr' ? pprVanaId(shaftVanaDiam) : pirVanaId(shaftVanaDiam);
-    QTY[svId] = (QTY[svId]||0) + shaftVanaAdet * shaft * svHatlar;
+    QTY[svId] = (QTY[svId]||0) + shaftVanaAdet * totalShaft * svHatlar;
   }
 
   // Her N katta bir şaft PPR kesme vanası
@@ -198,7 +225,7 @@ export function calculate(config, priceOverride = {}) {
       const katSayisi   = Math.round(seg.m / floorH);
       const vanaNoktasi = Math.max(0, Math.floor(katSayisi / vertStep) - 1);
       const segVanaId   = pprVanaId(seg.diam);
-      QTY[segVanaId] = (QTY[segVanaId]||0) + vanaNoktasi * shaft * aktifHatlar;
+      QTY[segVanaId] = (QTY[segVanaId]||0) + vanaNoktasi * totalShaft * aktifHatlar;
     });
   }
 
@@ -227,7 +254,7 @@ export function calculate(config, priceOverride = {}) {
     const downN = downDiam.slice(1);  // e.g. '50'
     // Equal Te at the junction (run diam)
     const tId = 't' + endN;
-    QTY[tId] = (QTY[tId] || 0) + shaft;
+    QTY[tId] = (QTY[tId] || 0) + totalShaft;
     // If down riser is smaller → add reducer
     if (endDiam !== downDiam) {
       const eNN = parseInt(endN);
@@ -235,11 +262,11 @@ export function calculate(config, priceOverride = {}) {
       const bigN   = eNN > dNN ? endN  : downN;
       const smallN = eNN < dNN ? endN  : downN;
       const rId = 'r' + bigN + smallN;
-      if (QTY[rId] !== undefined) QTY[rId] = (QTY[rId] || 0) + shaft;
-      else QTY[rId] = shaft;
+      if (QTY[rId] !== undefined) QTY[rId] = (QTY[rId] || 0) + totalShaft;
+      else QTY[rId] = totalShaft;
     }
     // Down riser pipe
-    const downM = downFloors * (floorH || 4) * shaft;
+    const downM = downFloors * (floorH || 4) * totalShaft;
     QTY[downDiam] = (QTY[downDiam] || 0) + downM;
     pipe[downDiam] = (pipe[downDiam] || 0) + downM;
   };
@@ -269,17 +296,17 @@ export function calculate(config, priceOverride = {}) {
   // Dikey borular (şaft kolonu)
   const hatSayV = (hasHot ? 1 : 0) + (hasCold ? 1 : 0);
   allSegs.forEach(s => {
-    if (hatSayV > 0) addKelep(s.diam, s.m * shaft * hatSayV);
+    if (hatSayV > 0) addKelep(s.diam, s.m * totalShaft * hatSayV);
   });
-  if (hasCirc) addKelep(circDiam, autoCircDikey * shaft);
+  if (hasCirc) addKelep(circDiam, autoCircDikey * totalShaft);
 
   // Branşman boruları
   if (hasHot)  addKelep(brDiam, (brHot  || 0) * totalFlats);
   if (hasCold) addKelep(brDiam, (brCold || 0) * totalFlats);
 
   // Aşağı inen hatlar
-  if (hasHot  && (hotDownFloors  || 0) > 0) addKelep(hotDownDiam  || 'q50', (hotDownFloors  || 0) * (floorH || 4) * shaft);
-  if (hasCold && (coldDownFloors || 0) > 0) addKelep(coldDownDiam || 'q50', (coldDownFloors || 0) * (floorH || 4) * shaft);
+  if (hasHot  && (hotDownFloors  || 0) > 0) addKelep(hotDownDiam  || 'q50', (hotDownFloors  || 0) * (floorH || 4) * totalShaft);
+  if (hasCold && (coldDownFloors || 0) > 0) addKelep(coldDownDiam || 'q50', (coldDownFloors || 0) * (floorH || 4) * totalShaft);
 
   // Kelepçe adet → QTY
   let totalClamps = 0;
@@ -303,13 +330,13 @@ export function calculate(config, priceOverride = {}) {
   // ── 12. Özet KPI değerleri ────────────────────────────────────────
   const totalPipe = Object.values(pipe).reduce((a, b) => a + b, 0);
   const circTotal = hasCirc
-    ? circYatay + autoCircDikey * shaft
+    ? circYatay * blokMult + autoCircDikey * totalShaft
     : 0;
-  const hotYatay  = hasHot  ? (hyHotL1||0)  + (hyHotL2||0)  + (hyHotL3||0)  : 0;
-  const coldYatay = hasCold ? (hyColdL1||0) + (hyColdL2||0) + (hyColdL3||0) : 0;
-  const hotDikey  = hasHot  ? allSegs.reduce((s, sg) => s + sg.m * shaft, 0) : 0;
-  const coldDikey = hasCold ? allSegs.reduce((s, sg) => s + sg.m * shaft, 0) : 0;
-  const circDikeyTotal = hasCirc ? autoCircDikey * shaft : 0; // şaft × diam bazlı gerçek dikey
+  const hotYatay  = hasHot  ? ((hyHotL1||0)  + (hyHotL2||0)  + (hyHotL3||0))  * blokMult : 0;
+  const coldYatay = hasCold ? ((hyColdL1||0) + (hyColdL2||0) + (hyColdL3||0)) * blokMult : 0;
+  const hotDikey  = hasHot  ? allSegs.reduce((s, sg) => s + sg.m * totalShaft, 0) : 0;
+  const coldDikey = hasCold ? allSegs.reduce((s, sg) => s + sg.m * totalShaft, 0) : 0;
+  const circDikeyTotal = hasCirc ? autoCircDikey * totalShaft : 0;
 
   return {
     QTY,
@@ -326,7 +353,7 @@ export function calculate(config, priceOverride = {}) {
     hotYatay, hotDikey,
     coldYatay, coldDikey,
     totalFlats,
-    shaftVanaTotal: shaftVanaAdet * shaft * svHatlar,
+    shaftVanaTotal: shaftVanaAdet * totalShaft * svHatlar,
     flatValve: dValveInQ + dValveQ,
   };
 }
