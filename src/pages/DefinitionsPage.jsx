@@ -65,11 +65,21 @@ function PriceListTab() {
   const { brands, priceLists, fetchBrands, fetchPriceList, upsertPrices, seedBrandFromConstants } = useDefinitionsStore();
   const [selBrand,   setSelBrand]  = useState('');
   const [localPrices,setLocalP]    = useState({});
-  const [dirtyRows,  setDirtyRows] = useState(new Set());   // değişen product_id'ler
-  const [rowSaving,  setRowSaving] = useState({});           // {pid: bool}
+  const [dirtyRows,  setDirtyRows] = useState(new Set());
+  const [rowSaving,  setRowSaving] = useState({});
   const [allSaving,  setAllSaving] = useState(false);
   const [catFilter,  setCatFilter] = useState('Tümü');
   const [seeding,    setSeeding]   = useState(false);
+
+  // Toplu işlem
+  const [bulkPct,  setBulkPct]  = useState('');
+  const [bulkDisc, setBulkDisc] = useState('');
+
+  // CSV içe aktarma
+  const [showImport,     setShowImport]     = useState(false);
+  const [importText,     setImportText]     = useState('');
+  const [importPreview,  setImportPreview]  = useState([]);
+  const [importErrors,   setImportErrors]   = useState([]);
 
   useEffect(() => { fetchBrands(); }, []);
 
@@ -168,6 +178,101 @@ function PriceListTab() {
   }
 
   const CAT_MAP = { boru:'Boru', baglanti:'Bağlantı', vana:'Vana', mekanik:'Mekanik Oda' };
+
+  /** Görünen ürünleri sekme-ayrımlı TXT olarak indir (Excel'de açılır) */
+  function handleExport() {
+    const visible = PRICES.filter(p => catFilter === 'Tümü' || CAT_MAP[p.cat] === catFilter);
+    const header  = ['ID', 'Ürün', 'Birim', 'Liste Fiyatı', 'İskonto %', 'Net Fiyat'].join('\t');
+    const rows    = visible.map(p => {
+      const lp  = rowVal(p.id, 'list_price',   p.list);
+      const dp  = rowVal(p.id, 'discount_pct', p.disc);
+      const net = ((parseFloat(lp) || 0) * (1 - (parseFloat(dp) || 0) / 100)).toFixed(2);
+      return [p.id, p.n, p.u, lp, dp, net].join('\t');
+    });
+    const blob = new Blob(['\ufeff' + [header, ...rows].join('\n')], { type: 'text/plain;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `fiyat-listesi-${new Date().toISOString().slice(0,10)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  /** Excel'den yapıştırılan metni ayrıştır */
+  function parseImport(text) {
+    const knownIds = new Set(PRICES.map(p => p.id));
+    const lines    = text.split('\n').map(l => l.trim()).filter(Boolean);
+    const rows = [], errors = [];
+    lines.forEach((line, idx) => {
+      const cells = line.split('\t').map(c => c.trim().replace(',', '.'));
+      if (cells.length < 2) return;
+      const id = cells[0];
+      if (!knownIds.has(id)) {
+        if (idx === 0) return; // başlık satırını atla
+        errors.push(`Satır ${idx + 1}: Bilinmeyen ID "${id}"`);
+        return;
+      }
+      const p = PRICES.find(pr => pr.id === id);
+      let lp, dp;
+      if (cells.length >= 6) { lp = parseFloat(cells[3]); dp = parseFloat(cells[4]); }
+      else if (cells.length >= 3) { lp = parseFloat(cells[1]); dp = parseFloat(cells[2]); }
+      else { lp = parseFloat(cells[1]); dp = parseFloat(rowVal(id, 'discount_pct', p.disc)); }
+      if (isNaN(lp) || lp < 0) { errors.push(`Satır ${idx + 1} (${id}): Geçersiz fiyat`); return; }
+      rows.push({ id, product_name: p.n, list_price: lp, discount_pct: isNaN(dp) ? (parseFloat(rowVal(id, 'discount_pct', p.disc)) || 0) : dp });
+    });
+    return { rows, errors };
+  }
+
+  function handleParseImport() {
+    const { rows, errors } = parseImport(importText);
+    setImportPreview(rows);
+    setImportErrors(errors);
+  }
+
+  /** İçe aktarılan satırları localPrices'a uygula */
+  function applyImport() {
+    if (importPreview.length === 0) return;
+    setLocalP(prev => {
+      const next = { ...prev };
+      importPreview.forEach(row => { next[row.id] = { list_price: row.list_price, discount_pct: row.discount_pct }; });
+      return next;
+    });
+    setDirtyRows(prev => { const s = new Set(prev); importPreview.forEach(r => s.add(r.id)); return s; });
+    showToast(`${importPreview.length} ürün fiyatı güncellendi`);
+    setShowImport(false); setImportText(''); setImportPreview([]); setImportErrors([]);
+  }
+
+  /** Görünen ürünlerin liste fiyatını % artır/azalt */
+  function applyBulkPct() {
+    const pct = parseFloat(bulkPct);
+    if (isNaN(pct)) { showToast('Geçerli bir yüzde değeri girin'); return; }
+    const visible = PRICES.filter(p => catFilter === 'Tümü' || CAT_MAP[p.cat] === catFilter);
+    const mult = 1 + pct / 100;
+    setLocalP(prev => {
+      const next = { ...prev };
+      visible.forEach(p => {
+        const cur = parseFloat(prev[p.id]?.list_price ?? p.list) || 0;
+        next[p.id] = { ...(next[p.id] || {}), list_price: Math.round(cur * mult * 100) / 100 };
+      });
+      return next;
+    });
+    setDirtyRows(prev => { const s = new Set(prev); visible.forEach(p => s.add(p.id)); return s; });
+    showToast(`${visible.length} ürün fiyatı %${pct > 0 ? '+' : ''}${pct} güncellendi`);
+  }
+
+  /** Görünen ürünlerin iskontosunu toplu ayarla */
+  function applyBulkDisc() {
+    const disc = parseFloat(bulkDisc);
+    if (isNaN(disc) || disc < 0 || disc > 100) { showToast('0-100 arası iskonto oranı girin'); return; }
+    const visible = PRICES.filter(p => catFilter === 'Tümü' || CAT_MAP[p.cat] === catFilter);
+    setLocalP(prev => {
+      const next = { ...prev };
+      visible.forEach(p => { next[p.id] = { ...(next[p.id] || {}), discount_pct: disc }; });
+      return next;
+    });
+    setDirtyRows(prev => { const s = new Set(prev); visible.forEach(p => s.add(p.id)); return s; });
+    showToast(`${visible.length} ürün iskontosu %${disc} yapıldı`);
+  }
   const filteredPrices = PRICES.filter(p =>
     catFilter === 'Tümü' || CAT_MAP[p.cat] === catFilter
   );
@@ -209,7 +314,7 @@ function PriceListTab() {
 
         {/* Hazır fiyat yükleme */}
         {selBrand && (
-          <div style={{ display:'flex', gap:8, marginBottom:14 }}>
+          <div style={{ display:'flex', gap:8, marginBottom:10 }}>
             <Button variant="default" style={{ padding:'4px 12px', fontSize:11 }}
               onClick={handleSeedKalde} disabled={seeding}>
               Kalde Varsayılan Fiyatlarını Yükle
@@ -218,6 +323,35 @@ function PriceListTab() {
               onClick={handleSeedFirat} disabled={seeding}>
               Fırat Boru Fiyatlarını Yükle
             </Button>
+          </div>
+        )}
+
+        {/* Toplu İşlemler */}
+        {selBrand && (
+          <div style={{ display:'flex', gap:8, marginBottom:14, flexWrap:'wrap', alignItems:'center', padding:'8px 12px', background:'rgba(0,0,0,0.02)', border:'1px solid var(--border)', borderRadius:'var(--r2)', fontSize:12 }}>
+            <span style={{ fontWeight:700, color:'var(--muted)', marginRight:4, whiteSpace:'nowrap' }}>Toplu İşlem:</span>
+            <button onClick={handleExport} style={{ background:'var(--white)', border:'1px solid var(--border)', borderRadius:5, padding:'4px 10px', fontSize:11, cursor:'pointer', fontWeight:700, color:'var(--acc)', whiteSpace:'nowrap' }}>
+              ⬇ Excel'e Aktar
+            </button>
+            <button onClick={() => setShowImport(true)} style={{ background:'var(--white)', border:'1px solid var(--border)', borderRadius:5, padding:'4px 10px', fontSize:11, cursor:'pointer', fontWeight:700, color:'var(--acc)', whiteSpace:'nowrap' }}>
+              ⬆ Excel'den İçe Aktar
+            </button>
+            <div style={{ width:1, height:22, background:'var(--border)', margin:'0 4px' }} />
+            <span style={{ color:'var(--muted)', whiteSpace:'nowrap' }}>Fiyat %:</span>
+            <input type="number" value={bulkPct} onChange={e => setBulkPct(e.target.value)}
+              placeholder="örn: 10 veya -5" step="1"
+              style={{ width:100, padding:'3px 6px', fontSize:11, border:'1px solid var(--border)', borderRadius:5, fontFamily:'var(--mono)' }} />
+            <button onClick={applyBulkPct} disabled={!bulkPct} style={{ background: bulkPct ? 'var(--acc)' : 'var(--border)', color: bulkPct ? '#fff' : 'var(--muted)', border:'none', borderRadius:5, padding:'4px 10px', fontSize:11, cursor: bulkPct ? 'pointer' : 'default', fontWeight:700, whiteSpace:'nowrap' }}>
+              Fiyata Uygula
+            </button>
+            <div style={{ width:1, height:22, background:'var(--border)', margin:'0 4px' }} />
+            <span style={{ color:'var(--muted)', whiteSpace:'nowrap' }}>İskonto %:</span>
+            <input type="number" value={bulkDisc} onChange={e => setBulkDisc(e.target.value)}
+              placeholder="örn: 30" min="0" max="100" step="1"
+              style={{ width:70, padding:'3px 6px', fontSize:11, border:'1px solid var(--border)', borderRadius:5, fontFamily:'var(--mono)' }} />
+            <button onClick={applyBulkDisc} disabled={bulkDisc === ''} style={{ background: bulkDisc !== '' ? 'var(--green)' : 'var(--border)', color: bulkDisc !== '' ? '#fff' : 'var(--muted)', border:'none', borderRadius:5, padding:'4px 10px', fontSize:11, cursor: bulkDisc !== '' ? 'pointer' : 'default', fontWeight:700, whiteSpace:'nowrap' }}>
+              İskontoya Uygula
+            </button>
           </div>
         )}
 
@@ -250,6 +384,7 @@ function PriceListTab() {
             </thead>
             <tbody>
               {filteredPrices.map(p => {
+
                 const lp  = rowVal(p.id, 'list_price',   p.list);
                 const dp  = rowVal(p.id, 'discount_pct', p.disc);
                 const net = (parseFloat(lp) || 0) * (1 - (parseFloat(dp) || 0) / 100);
@@ -295,6 +430,79 @@ function PriceListTab() {
           </table>
         </div>
       </Card>
+
+      {/* Excel'den içe aktarma modalı */}
+      {showImport && (
+        <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.55)', zIndex:1000, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <div style={{ background:'var(--bg)', border:'1px solid var(--border)', borderRadius:'var(--r)', padding:24, width:660, maxWidth:'95vw', maxHeight:'85vh', overflowY:'auto', boxShadow:'0 8px 32px rgba(0,0,0,0.2)' }}>
+            <h3 style={{ marginBottom:8, fontSize:16, fontWeight:800 }}>Excel'den Fiyat İçe Aktar</h3>
+            <div style={{ fontSize:12, color:'var(--muted)', marginBottom:10, lineHeight:1.6 }}>
+              Excel'den kopyalayıp yapıştırın. Sekme (Tab) ayrımlı sütunlar:<br/>
+              <code style={{ background:'rgba(0,0,0,0.05)', padding:'2px 6px', borderRadius:3 }}>ID &nbsp;&nbsp; Liste Fiyatı &nbsp;&nbsp; İskonto %</code>
+              &nbsp;ya da dışa aktardığınız 6 sütunlu format
+            </div>
+            <textarea
+              value={importText}
+              onChange={e => { setImportText(e.target.value); setImportPreview([]); setImportErrors([]); }}
+              placeholder="Buraya Excel'den kopyalayıp yapıştırın..."
+              style={{ width:'100%', height:140, fontFamily:'var(--mono)', fontSize:11, padding:8, border:'1px solid var(--border)', borderRadius:'var(--r2)', resize:'vertical', boxSizing:'border-box', outline:'none' }}
+            />
+            <div style={{ display:'flex', gap:8, marginTop:8, marginBottom:12 }}>
+              <button onClick={handleParseImport} disabled={!importText.trim()} style={{ background:'var(--acc)', color:'#fff', border:'none', borderRadius:6, padding:'6px 16px', fontSize:12, cursor:'pointer', fontWeight:700, opacity: importText.trim() ? 1 : 0.5 }}>
+                Önizle
+              </button>
+              <button onClick={() => { setShowImport(false); setImportText(''); setImportPreview([]); setImportErrors([]); }} style={{ background:'transparent', border:'1px solid var(--border)', color:'var(--muted)', borderRadius:6, padding:'6px 14px', fontSize:12, cursor:'pointer' }}>
+                İptal
+              </button>
+            </div>
+
+            {importErrors.length > 0 && (
+              <div style={{ background:'rgba(239,68,68,0.06)', border:'1px solid rgba(239,68,68,0.25)', borderRadius:'var(--r2)', padding:'8px 12px', marginBottom:12 }}>
+                <div style={{ fontWeight:700, fontSize:12, color:'#dc2626', marginBottom:4 }}>Uyarılar ({importErrors.length})</div>
+                {importErrors.map((e, i) => <div key={i} style={{ fontSize:11, color:'#dc2626' }}>{e}</div>)}
+              </div>
+            )}
+
+            {importPreview.length > 0 && (
+              <div>
+                <div style={{ fontSize:12, fontWeight:700, marginBottom:8, color:'var(--green)' }}>
+                  {importPreview.length} satır hazır
+                </div>
+                <div style={{ maxHeight:220, overflowY:'auto', border:'1px solid var(--border)', borderRadius:'var(--r2)' }}>
+                  <table style={{ width:'100%', fontSize:11, borderCollapse:'collapse' }}>
+                    <thead>
+                      <tr style={{ background:'rgba(0,0,0,0.04)' }}>
+                        <th style={{ padding:'5px 8px', textAlign:'left', fontWeight:700 }}>ID</th>
+                        <th style={{ padding:'5px 8px', textAlign:'left', fontWeight:700 }}>Ürün</th>
+                        <th style={{ padding:'5px 8px', textAlign:'right', fontWeight:700 }}>Liste</th>
+                        <th style={{ padding:'5px 8px', textAlign:'right', fontWeight:700 }}>İsk%</th>
+                        <th style={{ padding:'5px 8px', textAlign:'right', fontWeight:700 }}>Net</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {importPreview.map(row => {
+                        const net = (row.list_price || 0) * (1 - (row.discount_pct || 0) / 100);
+                        return (
+                          <tr key={row.id} style={{ borderTop:'1px solid var(--border)' }}>
+                            <td style={{ padding:'3px 8px', fontFamily:'var(--mono)', fontSize:10 }}>{row.id}</td>
+                            <td style={{ padding:'3px 8px' }}>{row.product_name}</td>
+                            <td style={{ padding:'3px 8px', textAlign:'right', fontFamily:'var(--mono)' }}>{TR(row.list_price)}</td>
+                            <td style={{ padding:'3px 8px', textAlign:'right', color:'var(--muted)' }}>{row.discount_pct}%</td>
+                            <td style={{ padding:'3px 8px', textAlign:'right', color:'var(--green)', fontFamily:'var(--mono)' }}>{TR(net)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <button onClick={applyImport} style={{ marginTop:12, background:'var(--green)', color:'#fff', border:'none', borderRadius:6, padding:'8px 20px', fontSize:13, cursor:'pointer', fontWeight:700 }}>
+                  ✓ {importPreview.length} Satırı Uygula
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
