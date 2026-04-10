@@ -179,21 +179,24 @@ function PriceListTab() {
 
   const CAT_MAP = { boru:'Boru', baglanti:'Bağlantı', vana:'Vana', mekanik:'Mekanik Oda' };
 
-  /** Görünen ürünleri sekme-ayrımlı TXT olarak indir (Excel'de açılır) */
+  /** Görünen ürünleri CSV olarak indir (Türkçe Excel: noktalı virgül ayraçlı) */
   function handleExport() {
     const visible = PRICES.filter(p => catFilter === 'Tümü' || CAT_MAP[p.cat] === catFilter);
-    const header  = ['ID', 'Ürün', 'Birim', 'Liste Fiyatı', 'İskonto %', 'Net Fiyat'].join('\t');
+    const sep     = ';';
+    const header  = ['ID', 'Ürün', 'Birim', 'Liste Fiyatı', 'İskonto %', 'Net Fiyat'].join(sep);
     const rows    = visible.map(p => {
       const lp  = rowVal(p.id, 'list_price',   p.list);
       const dp  = rowVal(p.id, 'discount_pct', p.disc);
       const net = ((parseFloat(lp) || 0) * (1 - (parseFloat(dp) || 0) / 100)).toFixed(2);
-      return [p.id, p.n, p.u, lp, dp, net].join('\t');
+      // Virgül içeren hücreleri tırnak içine al
+      const esc = v => { const s = String(v); return s.includes(sep) ? `"${s}"` : s; };
+      return [p.id, p.n, p.u, lp, dp, net].map(esc).join(sep);
     });
-    const blob = new Blob(['\ufeff' + [header, ...rows].join('\n')], { type: 'text/plain;charset=utf-8' });
+    const blob = new Blob(['\ufeff' + [header, ...rows].join('\r\n')], { type: 'text/csv;charset=utf-8' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
     a.href     = url;
-    a.download = `fiyat-listesi-${new Date().toISOString().slice(0,10)}.txt`;
+    a.download = `fiyat-listesi-${new Date().toISOString().slice(0,10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
