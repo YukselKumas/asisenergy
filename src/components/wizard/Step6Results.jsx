@@ -9,6 +9,7 @@ import { useCalculationStore } from '../../store/calculationStore.js';
 import { useAuthStore }         from '../../store/authStore.js';
 import { calculate }            from '../../lib/calculator/index.js';
 import { CAT_LABEL }            from '../../lib/calculator/constants.js';
+import { useValidation }        from '../../hooks/useValidation.js';
 import { Card }      from '../ui/Card.jsx';
 import { Button }    from '../ui/Button.jsx';
 import { showToast } from '../ui/Toast.jsx';
@@ -124,6 +125,158 @@ const CostTable = memo(function CostTable({ result, kdvRate }) {
             <tr className="tr-genel"><td colSpan={4} style={{ fontSize:15 }}>🏆 Genel Toplam (KDV Dahil)</td><td style={{ textAlign:'right', fontSize:15 }}>{TR(result.grandTotal,0)} ₺</td><td></td></tr>
           </tbody>
         </table>
+      </div>
+    </Card>
+  );
+});
+
+// ── Doğrulama Bölümü ─────────────────────────────────────────────────
+
+const TR2 = x => new Intl.NumberFormat('tr-TR', { minimumFractionDigits:2, maximumFractionDigits:2 }).format(x);
+
+const STATUS_ICON  = { ok:'✅', warn:'⚠️', error:'❌' };
+const STATUS_COLOR = { ok:'#22c55e', warn:'#f59e0b', error:'#ef4444' };
+
+function ScoreCard({ label, value, sub, color }) {
+  return (
+    <div style={{ flex:1, minWidth:130, padding:'12px 14px', background:'var(--white)', border:`2px solid ${color}`, borderRadius:'var(--r)', textAlign:'center' }}>
+      <div style={{ fontSize:10, color:'var(--muted)', fontWeight:700, letterSpacing:.5, marginBottom:4 }}>{label}</div>
+      <div style={{ fontSize:30, fontWeight:900, color, lineHeight:1 }}>{value}</div>
+      <div style={{ fontSize:11, color, fontWeight:600, marginTop:4 }}>{sub}</div>
+    </div>
+  );
+}
+
+const ValidationSection = memo(function ValidationSection({ config, result, projectId }) {
+  const { validation, save } = useValidation(config, result);
+  const [saving, setSaving]  = useState(false);
+  const [saved,  setSaved]   = useState(false);
+
+  if (!validation) return null;
+
+  const { score, idr, qai, are, effectiveLength } = validation;
+
+  const scoreColor = score >= 80 ? '#22c55e' : score >= 60 ? '#f59e0b' : '#ef4444';
+  const scoreLabel = score >= 80 ? 'İyi'     : score >= 60 ? 'Orta'    : 'Düşük';
+  const qaiColor   = qai.avg <= 10 ? '#22c55e' : qai.avg <= 20 ? '#f59e0b' : '#ef4444';
+  const qaiLabel   = qai.avg <= 10 ? '✅ Tutarlı' : qai.avg <= 20 ? '⚠️ Kontrol Et' : '❌ Yüksek Fark';
+  const areColor   = are.ratio >= 80 ? '#22c55e' : '#f59e0b';
+
+  async function handleSave() {
+    if (!projectId) { showToast('Önce projeyi kaydedin'); return; }
+    if (saved) return;
+    setSaving(true);
+    try {
+      await save(projectId);
+      setSaved(true);
+      showToast('✓ Doğrulama kaydedildi');
+    } catch (e) {
+      showToast('Kayıt hatası: ' + e.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Card accent="warn" title="Doğrulama & Kalite Kontrolü" badge="QA">
+
+      {/* ── Metrik kartları ── */}
+      <div style={{ display:'flex', gap:10, flexWrap:'wrap', marginBottom:16 }}>
+        <ScoreCard label="DOĞRULAMA PUANI" value={score} sub={scoreLabel}          color={scoreColor} />
+        <ScoreCard label="QAI — MİKTAR"    value={`%${qai.avg.toFixed(1)}`} sub={qaiLabel} color={qaiColor} />
+        <ScoreCard label="ARE — OTOMASYON" value={`%${are.ratio.toFixed(0)}`} sub={`${are.inStandard}/${are.total} çap standart`} color={areColor} />
+        <ScoreCard label="IDR — TUTARSIZLIK" value={idr.length} sub={idr.length === 0 ? '✅ Sorun yok' : `${idr.length} uyarı`} color={idr.length === 0 ? '#22c55e' : '#ef4444'} />
+      </div>
+
+      {/* ── IDR uyarıları ── */}
+      {idr.length > 0 && (
+        <div style={{ marginBottom:14, padding:'10px 14px', background:'rgba(239,68,68,0.06)', border:'1px solid rgba(239,68,68,0.25)', borderRadius:'var(--r2)' }}>
+          <div style={{ fontSize:12, fontWeight:700, color:'#ef4444', marginBottom:6 }}>Mantık Tutarsızlıkları (IDR)</div>
+          {idr.map((f, i) => (
+            <div key={i} style={{ fontSize:12, color:'#ef4444', marginBottom:2 }}>⚠ {f.message}</div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Fitting karşılaştırma tablosu ── */}
+      {qai.details.length > 0 && (
+        <div style={{ marginBottom:14 }}>
+          <div style={{ fontSize:13, fontWeight:700, marginBottom:8 }}>
+            Fitting Karşılaştırması
+            <span style={{ fontSize:11, color:'var(--muted)', fontWeight:400, marginLeft:8 }}>
+              Standart katsayı (h=1.5 / v=0.8 per 10m) vs hesaplanan
+            </span>
+          </div>
+          <div className="rtw">
+            <table style={{ minWidth:480 }}>
+              <thead>
+                <tr>
+                  <th>Fitting</th>
+                  <th style={{ textAlign:'right' }}>Standart Öneri</th>
+                  <th style={{ textAlign:'right' }}>Hesaplanan</th>
+                  <th style={{ textAlign:'right' }}>Fark %</th>
+                  <th style={{ textAlign:'center' }}>Durum</th>
+                </tr>
+              </thead>
+              <tbody>
+                {qai.details.map(row => (
+                  <tr key={row.id}>
+                    <td style={{ fontFamily:'var(--mono)', fontSize:12, fontWeight:600 }}>{row.id}</td>
+                    <td style={{ textAlign:'right', fontFamily:'var(--mono)' }}>{row.suggested}</td>
+                    <td style={{ textAlign:'right', fontFamily:'var(--mono)' }}>{row.actual}</td>
+                    <td style={{ textAlign:'right', fontFamily:'var(--mono)', fontWeight:700,
+                      color: STATUS_COLOR[row.status] }}>
+                      {row.diffPct > 0 ? '+' : ''}{row.diffPct.toFixed(1)}%
+                    </td>
+                    <td style={{ textAlign:'center', fontSize:14 }}>{STATUS_ICON[row.status]}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── Crane TP-410 efektif uzunluk ── */}
+      <div style={{ padding:'12px 16px', background:'rgba(59,130,246,0.05)', border:'1px solid var(--border)', borderRadius:'var(--r2)', marginBottom:14 }}>
+        <div style={{ fontSize:13, fontWeight:700, marginBottom:10 }}>
+          Crane TP-410 Efektif Eşdeğer Boru Uzunluğu
+        </div>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(180px, 1fr))', gap:10, fontSize:13 }}>
+          <div>
+            <div style={{ fontSize:10, color:'var(--muted)', fontWeight:700 }}>DÜIZ BORU</div>
+            <div style={{ fontSize:18, fontWeight:800 }}>{TR2(effectiveLength.L_straight)} m</div>
+          </div>
+          <div>
+            <div style={{ fontSize:10, color:'var(--muted)', fontWeight:700 }}>FİTTİNG EK (Le)</div>
+            <div style={{ fontSize:18, fontWeight:800 }}>+{TR2(effectiveLength.Le_total)} m</div>
+          </div>
+          <div>
+            <div style={{ fontSize:10, color:'var(--acc)', fontWeight:700 }}>EFEKTİF UZUNLUK</div>
+            <div style={{ fontSize:18, fontWeight:800, color:'var(--acc)' }}>{TR2(effectiveLength.L_effective)} m</div>
+          </div>
+          <div>
+            <div style={{ fontSize:10, color:'#22c55e', fontWeight:700 }}>ÖNERİLEN (%15 EMNİYET)</div>
+            <div style={{ fontSize:18, fontWeight:800, color:'#22c55e' }}>{TR2(effectiveLength.L_recommended)} m</div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Kaydet ── */}
+      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+        <Button
+          variant="default"
+          onClick={handleSave}
+          disabled={saving || saved}
+          style={{ fontSize:12, padding:'4px 14px' }}
+        >
+          {saved ? '✓ Kaydedildi' : saving ? 'Kaydediliyor…' : '📋 Doğrulamayı Kaydet'}
+        </Button>
+        {!projectId && (
+          <span style={{ fontSize:11, color:'var(--muted)' }}>
+            Kaydetmek için önce projeyi kaydedin
+          </span>
+        )}
       </div>
     </Card>
   );
@@ -265,6 +418,7 @@ export function Step6Results({ goStep }) {
 
           <PipeSummary result={result} config={config} />
           <CostTable   result={result} kdvRate={config.kdvRate} />
+          <ValidationSection config={config} result={result} projectId={projectId} />
 
           {/* Aksiyon butonları */}
           <div className="btn-row no-print" style={{ marginTop:16 }}>
