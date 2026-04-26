@@ -6,7 +6,7 @@
 //
 // Tüm alt modülleri koordine eder. Saf fonksiyon — side effect yok.
 
-import { DIAM_ORDER } from './constants.js';
+import { DIAM_ORDER, PIR_VANA_MAP } from './constants.js';
 import { calcAllSegments }                                    from './vertical.js';
 import { emptyPipeMap, addHorizontalPipes, addVerticalPipes, addBranchPipes } from './pipes.js';
 import { calcElbows, calcCouplings, calcReductions } from './fittings.js';
@@ -194,12 +194,17 @@ export function calculate(config, priceOverride = {}) {
   // Tüm armatürler dFitDiam çapında — aynı çap, tutarlı bağlantı
   const adaDaire    = 'ada' + fd.replace('q', '');
   const adaDaire2   = adaDaire;  // aynı çap (giriş = çıkış)
-  const filtDaire   = fd === 'q32' ? 'f1'        : 'f34';
-  const cvDaire     = fd === 'q32' ? 'cv1'       : 'cv34';
-  const nipDaire    = fd === 'q32' ? 'n114'      : fd === 'q20' ? 'n12' : 'n34';
-  const saatDaire   = fd === 'q32' ? 'saatrek32' : 'saatrek25';
+  // Filtre, çekvalf, nipel, rakor: çap tam eşleşmeli
+  const FILT_MAP    = { q20:'f34', q25:'f34', q32:'f1', q40:'f114', q50:'f112', q63:'f2', q75:'f212', q90:'f3' };
+  const CV_MAP      = { q20:'cv34', q25:'cv34', q32:'cv1', q40:'cv114', q50:'cv112', q63:'cv2', q75:'cv212', q90:'cv3' };
+  const NIP_MAP     = { q20:'n12', q25:'n34' }; // q32+ → n114
+  const filtDaire   = FILT_MAP[fd]  || 'f34';
+  const cvDaire     = CV_MAP[fd]    || 'cv34';
+  const nipDaire    = NIP_MAP[fd]   || 'n114';
+  const saatDaire   = fd === 'q20' ? 'saatrek25' : 'saatrek' + fd.replace('q', '');
   // Vanalar: dFitDiam çapında — ½" (pir-v12) yalnızca enstrüman bağlantısında
-  const vanaInDaire = fd === 'q32' ? 'pir-v1' : fd === 'q25' ? 'pir-v34' : 'pir-v34';
+  // Daire bağlantısı minimum ¾" (q25 olarak değerlendirilir)
+  const vanaInDaire = PIR_VANA_MAP[fd === 'q20' ? 'q25' : fd] || 'pir-v34';
   const vanaDaire   = vanaInDaire;  // aynı çap
 
   QTY[adaDaire]    = (QTY[adaDaire]   ||0) + dAdaQ;

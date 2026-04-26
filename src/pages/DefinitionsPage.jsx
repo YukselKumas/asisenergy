@@ -2,6 +2,7 @@
 // 3 tab: Fiyat Listesi / Markalar / Sistem Ayarları
 
 import { useEffect, useState } from 'react';
+import * as XLSX from 'xlsx';
 import { useDefinitionsStore } from '../store/definitionsStore.js';
 import { PRICES, PRICES_FIRAT, CAT_LABEL } from '../lib/calculator/constants.js';
 import { Card }   from '../components/ui/Card.jsx';
@@ -179,26 +180,20 @@ function PriceListTab() {
 
   const CAT_MAP = { boru:'Boru', baglanti:'Bağlantı', vana:'Vana', mekanik:'Mekanik Oda' };
 
-  /** Görünen ürünleri CSV olarak indir (Türkçe Excel: noktalı virgül ayraçlı) */
+  /** Görünen ürünleri gerçek Excel (.xlsx) olarak indir */
   function handleExport() {
-    const visible = PRICES.filter(p => catFilter === 'Tümü' || CAT_MAP[p.cat] === catFilter);
-    const sep     = ';';
-    const header  = ['ID', 'Ürün', 'Birim', 'Liste Fiyatı', 'İskonto %', 'Net Fiyat'].join(sep);
-    const rows    = visible.map(p => {
-      const lp  = rowVal(p.id, 'list_price',   p.list);
-      const dp  = rowVal(p.id, 'discount_pct', p.disc);
-      const net = ((parseFloat(lp) || 0) * (1 - (parseFloat(dp) || 0) / 100)).toFixed(2);
-      // Virgül içeren hücreleri tırnak içine al
-      const esc = v => { const s = String(v); return s.includes(sep) ? `"${s}"` : s; };
-      return [p.id, p.n, p.u, lp, dp, net].map(esc).join(sep);
+    const visible  = PRICES.filter(p => catFilter === 'Tümü' || CAT_MAP[p.cat] === catFilter);
+    const header   = ['ID', 'Kategori', 'Ürün', 'Birim', 'Liste Fiyatı', 'İskonto %', 'Net Fiyat'];
+    const dataRows = visible.map(p => {
+      const lp  = parseFloat(rowVal(p.id, 'list_price',   p.list)) || 0;
+      const dp  = parseFloat(rowVal(p.id, 'discount_pct', p.disc)) || 0;
+      return [p.id, CAT_MAP[p.cat] || p.cat, p.n, p.u, lp, dp, lp * (1 - dp / 100)];
     });
-    const blob = new Blob(['\ufeff' + [header, ...rows].join('\r\n')], { type: 'text/csv;charset=utf-8' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    a.download = `fiyat-listesi-${new Date().toISOString().slice(0,10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const ws = XLSX.utils.aoa_to_sheet([header, ...dataRows]);
+    ws['!cols'] = [{ wch:16 },{ wch:12 },{ wch:44 },{ wch:8 },{ wch:14 },{ wch:10 },{ wch:14 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Fiyat Listesi');
+    XLSX.writeFile(wb, `fiyat-listesi-${new Date().toISOString().slice(0,10)}.xlsx`);
   }
 
   /** Excel'den yapıştırılan metni ayrıştır */
