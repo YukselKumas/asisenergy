@@ -1,4 +1,6 @@
-// ── UsersPage — Kullanıcı Yönetimi (Admin) ────────────────────────────
+// ── UsersPage — Kullanıcı Yönetimi ────────────────────────────────────
+// Yeni şema: profiles.full_name, roller: super_admin / company_admin / user
+
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase.js';
 import { showToast } from '../components/ui/Toast.jsx';
@@ -6,14 +8,26 @@ import { GlassSelect } from '../components/ui/GlassSelect.jsx';
 
 const TR_DATE = d => new Date(d).toLocaleDateString('tr-TR');
 
-const EMPTY_NEW = { name: '', email: '', password: '', role: 'user' };
+const ROLE_OPTIONS = [
+  { value: 'user',          label: 'Kullanıcı'  },
+  { value: 'company_admin', label: 'Yönetici'   },
+  { value: 'super_admin',   label: 'Süper Admin' },
+];
 
-// Inline düzenlenebilir hücre — tıkla, yaz, Enter/Kaydet
+const ROLE_BADGE = {
+  super_admin:   { label: 'Süper Admin', bg: '#fff8e6', color: '#b45309',  border: '#fde68a' },
+  company_admin: { label: 'Yönetici',   bg: '#eef2ff', color: '#4f46e5',  border: '#c7d2fe' },
+  user:          { label: 'Kullanıcı',  bg: '#f0fdf4', color: '#16a34a',  border: '#bbf7d0' },
+};
+
+const EMPTY_NEW = { full_name: '', email: '', password: '', role: 'user' };
+
+// ── Inline düzenlenebilir hücre ────────────────────────────────────────
 function EditCell({ value, placeholder, type = 'text', onSave, mono = false }) {
   const [editing, setEditing] = useState(false);
-  const [val, setVal] = useState(value || '');
+  const [val, setVal]         = useState(value || '');
 
-  function open() { setVal(value || ''); setEditing(true); }
+  function open()   { setVal(value || ''); setEditing(true); }
   function cancel() { setEditing(false); }
   async function save() {
     const v = val.trim();
@@ -65,6 +79,7 @@ function EditCell({ value, placeholder, type = 'text', onSave, mono = false }) {
   );
 }
 
+// ── Ana sayfa ──────────────────────────────────────────────────────────
 export function UsersPage() {
   const [users,        setUsers]        = useState([]);
   const [loading,      setLoading]      = useState(true);
@@ -80,7 +95,7 @@ export function UsersPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from('profiles')
-      .select('*')
+      .select('id, email, full_name, role, company_id, created_at')
       .order('created_at', { ascending: false });
     if (error) showToast('Kullanıcılar yüklenemedi: ' + error.message);
     else setUsers(data || []);
@@ -110,29 +125,28 @@ export function UsersPage() {
 
   async function handleAddUser(e) {
     e.preventDefault();
-    if (!newUser.name.trim() || !newUser.email.trim() || !newUser.password.trim()) {
+    if (!newUser.full_name.trim() || !newUser.email.trim() || !newUser.password.trim()) {
       showToast('Tüm alanları doldurun');
       return;
     }
     setAdding(true);
     try {
       const { data, error } = await supabase.auth.signUp({
-        email: newUser.email.trim(),
+        email:    newUser.email.trim(),
         password: newUser.password,
-        options: { data: { name: newUser.name.trim() } },
+        options:  { data: { full_name: newUser.full_name.trim(), role: newUser.role } },
       });
       if (error) throw error;
 
       if (data?.user) {
         const { error: pe } = await supabase.from('profiles').upsert({
-          id: data.user.id,
-          email: newUser.email.trim(),
-          name: newUser.name.trim(),
-          role: newUser.role,
-          is_active: true,
+          id:        data.user.id,
+          email:     newUser.email.trim(),
+          full_name: newUser.full_name.trim(),
+          role:      newUser.role,
         });
         if (pe) throw pe;
-        showToast(`${newUser.name} eklendi ✓`);
+        showToast(`${newUser.full_name} eklendi ✓`);
         setShowAdd(false);
         setNewUser(EMPTY_NEW);
         await fetchUsers();
@@ -144,9 +158,11 @@ export function UsersPage() {
     }
   }
 
-  const roleColor = r => r === 'admin'
-    ? { background: '#eef2ff', color: '#4f46e5', border: '1px solid #c7d2fe' }
-    : { background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' };
+  const stats = {
+    total:        users.length,
+    admins:       users.filter(u => ['super_admin','company_admin'].includes(u.role)).length,
+    superAdmins:  users.filter(u => u.role === 'super_admin').length,
+  };
 
   return (
     <div>
@@ -155,7 +171,7 @@ export function UsersPage() {
         <div>
           <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 5 }}>Kullanıcı Yönetimi</h1>
           <p style={{ color: 'var(--muted)', fontSize: 13 }}>
-            Kullanıcı rollerini ve erişim durumlarını yönetin.
+            Kullanıcı rollerini yönetin, şifre sıfırlama maili gönderin.
           </p>
         </div>
         <button
@@ -185,7 +201,8 @@ export function UsersPage() {
               <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 4 }}>Ad Soyad</label>
               <input
                 type="text" placeholder="Ahmet Yılmaz" required
-                value={newUser.name} onChange={e => setNewUser(p => ({ ...p, name: e.target.value }))}
+                value={newUser.full_name}
+                onChange={e => setNewUser(p => ({ ...p, full_name: e.target.value }))}
                 style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1.5px solid #e2e8f0', fontSize: 13, fontFamily: 'var(--sans)', outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
@@ -193,7 +210,8 @@ export function UsersPage() {
               <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 4 }}>Email</label>
               <input
                 type="email" placeholder="ahmet@sirket.com" required
-                value={newUser.email} onChange={e => setNewUser(p => ({ ...p, email: e.target.value }))}
+                value={newUser.email}
+                onChange={e => setNewUser(p => ({ ...p, email: e.target.value }))}
                 style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1.5px solid #e2e8f0', fontSize: 13, fontFamily: 'var(--mono)', outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
@@ -201,22 +219,28 @@ export function UsersPage() {
               <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 4 }}>Şifre</label>
               <input
                 type="password" placeholder="En az 6 karakter" required minLength={6}
-                value={newUser.password} onChange={e => setNewUser(p => ({ ...p, password: e.target.value }))}
+                value={newUser.password}
+                onChange={e => setNewUser(p => ({ ...p, password: e.target.value }))}
                 style={{ width: '100%', padding: '8px 10px', borderRadius: 6, border: '1.5px solid #e2e8f0', fontSize: 13, fontFamily: 'var(--sans)', outline: 'none', boxSizing: 'border-box' }}
               />
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: '#64748b', marginBottom: 4 }}>Rol</label>
-              <GlassSelect value={newUser.role} onChange={e => setNewUser(p => ({ ...p, role: e.target.value }))}>
-                <option value="user">Kullanıcı</option>
-                <option value="admin">Admin</option>
+              <GlassSelect
+                value={newUser.role}
+                onChange={e => setNewUser(p => ({ ...p, role: e.target.value }))}
+              >
+                {ROLE_OPTIONS.map(r => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
               </GlassSelect>
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
             <button type="submit" disabled={adding} style={{
               background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 6,
-              padding: '8px 18px', fontSize: 13, fontWeight: 700, cursor: adding ? 'not-allowed' : 'pointer',
+              padding: '8px 18px', fontSize: 13, fontWeight: 700,
+              cursor: adding ? 'not-allowed' : 'pointer',
               opacity: adding ? .7 : 1, fontFamily: 'var(--sans)',
             }}>
               {adding ? 'Ekleniyor...' : 'Ekle'}
@@ -231,13 +255,21 @@ export function UsersPage() {
 
       {/* İstatistik kartları */}
       <div className="kpis" style={{ marginBottom: 20 }}>
-        <div className="kpi"><div className="kl">Toplam Kullanıcı</div><div className="kv cacc">{users.length}</div></div>
-        <div className="kpi"><div className="kl">Aktif</div><div className="kv cgreen">{users.filter(u => u.is_active !== false).length}</div></div>
-        <div className="kpi"><div className="kl">Admin</div><div className="kv" style={{ color: 'var(--circ)' }}>{users.filter(u => u.role === 'admin').length}</div></div>
-        <div className="kpi"><div className="kl">Pasif</div><div className="kv" style={{ color: 'var(--muted)' }}>{users.filter(u => u.is_active === false).length}</div></div>
+        <div className="kpi">
+          <div className="kl">Toplam Kullanıcı</div>
+          <div className="kv cacc">{stats.total}</div>
+        </div>
+        <div className="kpi">
+          <div className="kl">Yönetici</div>
+          <div className="kv" style={{ color: 'var(--circ)' }}>{stats.admins}</div>
+        </div>
+        <div className="kpi">
+          <div className="kl">Süper Admin</div>
+          <div className="kv" style={{ color: 'var(--warn)' }}>{stats.superAdmins}</div>
+        </div>
       </div>
 
-      {/* Tablo */}
+      {/* Kullanıcı tablosu */}
       <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 'var(--r)', overflow: 'hidden', boxShadow: 'var(--sh)' }}>
         {loading ? (
           <div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>Yükleniyor...</div>
@@ -251,7 +283,6 @@ export function UsersPage() {
                   <th>Ad Soyad</th>
                   <th>Email</th>
                   <th>Rol</th>
-                  <th>Durum</th>
                   <th>Kayıt Tarihi</th>
                   <th>Şifre Sıfırla</th>
                 </tr>
@@ -260,13 +291,14 @@ export function UsersPage() {
                 {users.map(u => {
                   const isSaving    = saving === u.id;
                   const isResetting = resetLoading === u.id;
-                  const isActive    = u.is_active !== false;
-                  const initials    = (u.name || u.email || 'U')
+                  const name        = u.full_name || '';
+                  const initials    = (name || u.email || 'U')
                     .split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+                  const roleBadge   = ROLE_BADGE[u.role] ?? ROLE_BADGE.user;
 
                   return (
                     <tr key={u.id}>
-                      {/* Ad Soyad — inline düzenlenebilir */}
+                      {/* Ad Soyad */}
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
                           <div style={{
@@ -276,14 +308,14 @@ export function UsersPage() {
                             fontSize: 11, fontWeight: 800, color: '#fff',
                           }}>{initials}</div>
                           <EditCell
-                            value={u.name}
+                            value={name}
                             placeholder="İsim ekle"
-                            onSave={v => updateProfile(u.id, { name: v })}
+                            onSave={v => updateProfile(u.id, { full_name: v })}
                           />
                         </div>
                       </td>
 
-                      {/* Email — inline düzenlenebilir */}
+                      {/* Email */}
                       <td>
                         <EditCell
                           value={u.email}
@@ -300,28 +332,12 @@ export function UsersPage() {
                           value={u.role || 'user'}
                           disabled={isSaving}
                           onChange={e => updateProfile(u.id, { role: e.target.value })}
-                          style={{ minWidth: 130 }}
+                          style={{ minWidth: 140 }}
                         >
-                          <option value="user">Kullanıcı</option>
-                          <option value="admin">Admin</option>
+                          {ROLE_OPTIONS.map(r => (
+                            <option key={r.value} value={r.value}>{r.label}</option>
+                          ))}
                         </GlassSelect>
-                      </td>
-
-                      {/* Durum */}
-                      <td>
-                        <button
-                          onClick={() => updateProfile(u.id, { is_active: !isActive })}
-                          disabled={isSaving}
-                          style={{
-                            background: isActive ? 'var(--green-bg)' : 'var(--bg)',
-                            color:      isActive ? 'var(--green)'    : 'var(--muted)',
-                            border: `1px solid ${isActive ? 'var(--green-b)' : 'var(--border)'}`,
-                            borderRadius: 6, padding: '3px 10px', fontSize: 11,
-                            fontWeight: 700, cursor: 'pointer',
-                          }}
-                        >
-                          {isActive ? '● Aktif' : '○ Pasif'}
-                        </button>
                       </td>
 
                       {/* Tarih */}
