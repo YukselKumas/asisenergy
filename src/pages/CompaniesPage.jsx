@@ -183,10 +183,18 @@ export function CompaniesPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from('companies')
-      .select('*, profiles(count)')
+      .select('*')
       .order('created_at', { ascending: false });
-    if (error) showToast('Şirketler yüklenemedi: ' + error.message);
-    else setCompanies(data || []);
+    if (error) { showToast('Şirketler yüklenemedi: ' + error.message); setLoading(false); return; }
+
+    const { data: profileRows } = await supabase
+      .from('profiles')
+      .select('company_id')
+      .not('company_id', 'is', null);
+
+    const countMap = {};
+    (profileRows || []).forEach(p => { countMap[p.company_id] = (countMap[p.company_id] || 0) + 1; });
+    setCompanies((data || []).map(c => ({ ...c, _userCount: countMap[c.id] || 0 })));
     setLoading(false);
   }, []);
 
@@ -249,7 +257,7 @@ export function CompaniesPage() {
   const stats = {
     total:  companies.length,
     active: companies.filter(c => c.is_active).length,
-    users:  companies.reduce((s, c) => s + (c.profiles?.[0]?.count ?? 0), 0),
+    users:  companies.reduce((s, c) => s + (c._userCount ?? 0), 0),
   };
 
   return (
