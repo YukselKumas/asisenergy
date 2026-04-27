@@ -1,153 +1,332 @@
-// ── Sidebar — Sol navigasyon menüsü ───────────────────────────────────
-// Modül bazlı navigasyon. MODULES registry'den beslenecek şekilde tasarlandı.
+// ── Sidebar — Accordion navigasyon ─────────────────────────────────────
+// QDMS benzeri: bölüm başlığına tıklanınca alt menü açılır/kapanır.
+// Aktif rota hangi modüle aitse o bölüm otomatik açılır.
 
-import { NavLink } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore.js';
 import { MODULES } from '../../core/moduleRegistry.js';
 
-// ── İkonlar ────────────────────────────────────────────────────────────
-const Icon = ({ d, size = 16 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-    stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    {typeof d === 'string' ? <path d={d} /> : d}
-  </svg>
-);
-
-const ICONS = {
-  home:    <><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></>,
-  plus:    <><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></>,
-  history: <><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 15.5"/></>,
-  settings:<><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></>,
-  users:   <><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><circle cx="17" cy="9" r="3"/><path d="M21 21v-1.5a3 3 0 0 0-3-3h-1"/></>,
-  logout:  <><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></>,
-  building:<><rect x="3" y="9" width="18" height="12" rx="2"/><path d="M9 21V9M15 21V9"/><path d="M3 9l9-6 9 6"/></>,
-};
-
-const ROLE_LABELS = {
+// ── Rol etiketleri ─────────────────────────────────────────────────────
+const ROLE_INFO = {
   super_admin:   { label: 'Süper Admin', color: '#ff9f0a' },
   company_admin: { label: 'Yönetici',    color: '#0071e3' },
-  user:          { label: 'Kullanıcı',   color: '#6e6e73' },
+  user:          { label: 'Kullanıcı',   color: '#8e8e93' },
 };
 
-function NavItem({ to, end, icon, label }) {
+// ── SVG İkon seti ──────────────────────────────────────────────────────
+const ICONS = {
+  home: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9l9-6 9 6v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+  ),
+  pipe: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 12h18M12 3v18"/>
+      <circle cx="12" cy="12" r="9"/>
+    </svg>
+  ),
+  fire: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+    </svg>
+  ),
+  plus: (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+  ),
+  list: (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+      <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+    </svg>
+  ),
+  settings: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>
+    </svg>
+  ),
+  users: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+  ),
+  building: (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="9" width="18" height="13"/><path d="M8 22V12h8v10"/><path d="M3 9l9-7 9 7"/>
+    </svg>
+  ),
+  logout: (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+      <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+    </svg>
+  ),
+};
+
+// ── Alt nav linki ──────────────────────────────────────────────────────
+function NavItem({ to, label, iconKey, end, accentColor = '#0071e3' }) {
   return (
-    <NavLink to={to} end={end}
+    <NavLink
+      to={to}
+      end={end}
       style={({ isActive }) => ({
-        display: 'flex', alignItems: 'center', gap: 9,
-        padding: '7px 10px', borderRadius: 8, marginBottom: 2,
-        textDecoration: 'none', fontSize: 13, fontWeight: 500,
+        display: 'flex', alignItems: 'center', gap: 8,
+        padding: '6px 10px 6px 10px', borderRadius: 6, marginBottom: 1,
+        textDecoration: 'none', fontSize: 12.5, fontWeight: 500,
+        borderLeft: isActive ? `2px solid ${accentColor}` : '2px solid transparent',
+        background: isActive ? `rgba(${accentColor === '#0071e3' ? '0,113,227' : accentColor === '#ff3b30' ? '255,59,48' : '99,99,102'},0.08)` : 'transparent',
+        color: isActive ? accentColor : '#3c3c43',
         transition: 'all .12s',
-        ...(isActive
-          ? { background: 'rgba(0,113,227,0.10)', color: '#0071e3' }
-          : { background: 'transparent', color: '#1d1d1f' }
-        ),
       })}
     >
-      <span style={{ flexShrink: 0, display: 'flex', opacity: 0.8 }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-          {icon}
-        </svg>
-      </span>
+      {iconKey && (
+        <span style={{ width: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, opacity: 0.7 }}>
+          {ICONS[iconKey]}
+        </span>
+      )}
       {label}
     </NavLink>
   );
 }
 
+// ── Accordion bölüm ─────────────────────────────────────────────────────
+function AccordionSection({ sectionId, label, iconKey, children, isActive, badge, disabled, accentColor, accentRgb, openSections, onToggle }) {
+  const open = openSections[sectionId] ?? false;
+
+  // Aktif rota bu bölümdeyse otomatik aç
+  useEffect(() => {
+    if (isActive && !open) onToggle(sectionId, true);
+  }, [isActive]);                     // eslint-disable-line
+
+  return (
+    <div style={{ marginBottom: 2 }}>
+      {/* Bölüm başlığı */}
+      <button
+        onClick={() => !disabled && onToggle(sectionId)}
+        style={{
+          width: '100%',
+          display: 'flex', alignItems: 'center', gap: 8,
+          padding: '8px 10px', borderRadius: 8,
+          background: open && !disabled ? `rgba(${accentRgb},0.09)` : 'transparent',
+          border: 'none',
+          cursor: disabled ? 'not-allowed' : 'pointer',
+          color: open && !disabled ? accentColor : '#1d1d1f',
+          fontWeight: 600, fontSize: 13,
+          transition: 'background .15s, color .15s',
+          opacity: disabled ? 0.6 : 1,
+        }}
+      >
+        {/* İkon */}
+        <span style={{ width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          {ICONS[iconKey]}
+        </span>
+
+        {/* Etiket */}
+        <span style={{ flex: 1, textAlign: 'left' }}>{label}</span>
+
+        {/* Badge */}
+        {badge && (
+          <span style={{
+            fontSize: 9, fontWeight: 800, letterSpacing: '.3px',
+            background: '#aeaeb2', color: '#fff',
+            borderRadius: 999, padding: '1px 6px', flexShrink: 0,
+          }}>
+            {badge}
+          </span>
+        )}
+
+        {/* Chevron */}
+        {!disabled && (
+          <svg
+            width="11" height="11" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+            style={{
+              flexShrink: 0, opacity: 0.5,
+              transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
+              transition: 'transform .2s',
+            }}
+          >
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        )}
+      </button>
+
+      {/* Alt öğeler — CSS max-height ile animasyonlu */}
+      <div style={{
+        overflow: 'hidden',
+        maxHeight: open && !disabled ? 600 : 0,
+        transition: 'max-height .22s ease',
+      }}>
+        <div style={{ paddingLeft: 10, paddingTop: 2, paddingBottom: 4 }}>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Bölüm etiketi ──────────────────────────────────────────────────────
 function SectionLabel({ children }) {
   return (
     <div style={{
-      fontSize: 10, fontWeight: 700, letterSpacing: '.6px',
-      textTransform: 'uppercase', color: '#aeaeb2',
-      padding: '12px 8px 5px',
+      fontSize: 9.5, fontWeight: 700, letterSpacing: '.8px',
+      textTransform: 'uppercase', color: '#c7c7cc',
+      padding: '14px 10px 5px',
     }}>
       {children}
     </div>
   );
 }
 
+// ── Ana bileşen ─────────────────────────────────────────────────────────
 export function Sidebar() {
   const { profile, signOut } = useAuthStore();
+  const location = useLocation();
 
-  const role      = profile?.role ?? 'user';
-  const roleInfo  = ROLE_LABELS[role] ?? ROLE_LABELS.user;
-  const fullName  = profile?.full_name || profile?.name || 'Kullanıcı';
-  const initials  = fullName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-  const isAdmin   = ['super_admin', 'company_admin'].includes(role);
+  const role     = profile?.role ?? 'user';
+  const roleInfo = ROLE_INFO[role] ?? ROLE_INFO.user;
+  const fullName = profile?.full_name || profile?.name || 'Kullanıcı';
+  const initials = fullName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  const isAdmin      = ['super_admin', 'company_admin'].includes(role);
   const isSuperAdmin = role === 'super_admin';
+
+  // Hangi accordion bölümlerinin açık olduğunu tut
+  const [openSections, setOpenSections] = useState({});
+
+  function handleToggle(id, forceOpen) {
+    setOpenSections(prev => ({
+      ...prev,
+      [id]: forceOpen !== undefined ? forceOpen : !prev[id],
+    }));
+  }
+
+  // Aktif rota tespiti
+  const isAdminActive    = ['/tanimlamalar', '/kullanicilar'].some(p => location.pathname.startsWith(p));
+  const isPlatformActive = location.pathname.startsWith('/sirketler');
 
   return (
     <aside style={{
       width: 'var(--sidebar-w)', minHeight: '100vh',
-      background: 'rgba(250,250,252,0.88)',
-      backdropFilter: 'blur(24px) saturate(180%)',
-      WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+      background: 'rgba(250,250,252,0.94)',
+      backdropFilter: 'blur(20px) saturate(180%)',
+      WebkitBackdropFilter: 'blur(20px) saturate(180%)',
       display: 'flex', flexDirection: 'column',
       position: 'fixed', top: 0, left: 0, bottom: 0, zIndex: 100,
-      borderRight: '1px solid rgba(255,255,255,0.55)',
-      boxShadow: '2px 0 16px rgba(0,0,0,0.06)',
+      borderRight: '1px solid rgba(0,0,0,0.08)',
+      boxShadow: '2px 0 20px rgba(0,0,0,0.07)',
     }}>
 
-      {/* Logo + Şirket */}
-      <div style={{ padding: '18px 14px 14px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+      {/* ── Logo ── */}
+      <div style={{ padding: '16px 14px 13px', borderBottom: '1px solid rgba(0,0,0,0.07)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{
-            width: 32, height: 32, borderRadius: 9, background: '#0071e3',
+            width: 32, height: 32, borderRadius: 9,
+            background: 'linear-gradient(135deg, #0071e3, #0a84ff)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 14, fontWeight: 800, color: '#fff', flexShrink: 0,
+            boxShadow: '0 2px 8px rgba(0,113,227,0.35)',
           }}>A</div>
-          <div style={{ overflow: 'hidden' }}>
+          <div>
             <div style={{ fontWeight: 700, fontSize: 13, color: '#1d1d1f', letterSpacing: '-0.2px' }}>
               AsisenEnergy
             </div>
-            <div style={{ fontSize: 10.5, color: '#aeaeb2', fontWeight: 400, marginTop: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              PPR Metraj Platformu
+            <div style={{ fontSize: 10, color: '#aeaeb2', fontWeight: 500, marginTop: 1 }}>
+              Metraj Platformu
             </div>
           </div>
         </div>
       </div>
 
-      {/* Navigasyon */}
-      <nav style={{ flex: 1, padding: '6px 10px', overflowY: 'auto' }}>
+      {/* ── Navigasyon ── */}
+      <nav style={{ flex: 1, padding: '8px 10px 8px', overflowY: 'auto' }}>
 
-        {/* Ana */}
-        <SectionLabel>Genel</SectionLabel>
-        <NavItem to="/" end icon={ICONS.home} label="Ana Sayfa" />
+        {/* Ana Sayfa — accordion dışı direkt link */}
+        <NavItem to="/" end label="Ana Sayfa" iconKey="home" accentColor="#0071e3" />
 
-        {/* Modüller — registry'den */}
-        {MODULES.map(mod => (
-          <div key={mod.id}>
-            <SectionLabel>{mod.name}</SectionLabel>
-            {mod.navItems.map(item => (
-              <NavItem key={item.to} to={item.to}
-                icon={item.to.includes('yeni') ? ICONS.plus : ICONS.history}
-                label={item.label}
-              />
-            ))}
-          </div>
-        ))}
+        {/* ── Modüller ── */}
+        <SectionLabel>Modüller</SectionLabel>
 
-        {/* Yönetim */}
+        {MODULES.map(mod => {
+          const isModActive = (mod.navItems ?? []).some(item =>
+            item.to === location.pathname ||
+            (item.to !== '/' && location.pathname.startsWith(item.to.replace('/:id', '').replace(':id', '')))
+          );
+
+          return (
+            <AccordionSection
+              key={mod.id}
+              sectionId={mod.id}
+              label={mod.name}
+              iconKey={mod.icon}
+              isActive={isModActive}
+              badge={mod.comingSoon ? 'Yakında' : undefined}
+              disabled={mod.comingSoon}
+              accentColor={mod.color}
+              accentRgb={mod.colorRgb}
+              openSections={openSections}
+              onToggle={handleToggle}
+            >
+              {(mod.navItems ?? []).map(item => (
+                <NavItem
+                  key={item.to}
+                  to={item.to}
+                  label={item.label}
+                  iconKey={item.icon}
+                  accentColor={mod.color}
+                />
+              ))}
+            </AccordionSection>
+          );
+        })}
+
+        {/* ── Sistem (admin) ── */}
         {isAdmin && (
           <>
-            <SectionLabel>Yönetim</SectionLabel>
-            <NavItem to="/tanimlamalar" icon={ICONS.settings} label="Tanımlamalar" />
-            <NavItem to="/kullanicilar" icon={ICONS.users} label="Kullanıcılar" />
+            <SectionLabel>Sistem</SectionLabel>
+            <AccordionSection
+              sectionId="yonetim"
+              label="Yönetim"
+              iconKey="settings"
+              isActive={isAdminActive}
+              accentColor="#636366"
+              accentRgb="99,99,102"
+              openSections={openSections}
+              onToggle={handleToggle}
+            >
+              <NavItem to="/tanimlamalar" label="Tanımlamalar" iconKey="settings" accentColor="#636366" />
+              <NavItem to="/kullanicilar" label="Kullanıcılar"  iconKey="users"    accentColor="#636366" />
+            </AccordionSection>
           </>
         )}
 
-        {/* Süper Admin */}
+        {/* ── Platform (süper admin) ── */}
         {isSuperAdmin && (
-          <>
-            <SectionLabel>Platform</SectionLabel>
-            <NavItem to="/sirketler" icon={ICONS.building} label="Şirketler" />
-          </>
+          <AccordionSection
+            sectionId="platform"
+            label="Platform"
+            iconKey="building"
+            isActive={isPlatformActive}
+            accentColor="#ff9f0a"
+            accentRgb="255,159,10"
+            openSections={openSections}
+            onToggle={handleToggle}
+          >
+            <NavItem to="/sirketler" label="Şirketler" iconKey="building" accentColor="#ff9f0a" />
+          </AccordionSection>
         )}
       </nav>
 
-      {/* Kullanıcı Bilgisi + Çıkış */}
-      <div style={{ padding: '10px 10px 14px', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '6px 10px', marginBottom: 6 }}>
+      {/* ── Kullanıcı + Çıkış ── */}
+      <div style={{ padding: '8px 10px 13px', borderTop: '1px solid rgba(0,0,0,0.07)', flexShrink: 0 }}>
+        {/* Kullanıcı kartı */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '6px 10px', marginBottom: 7 }}>
           <div style={{
             width: 30, height: 30, borderRadius: 8, flexShrink: 0,
             background: roleInfo.color,
@@ -157,7 +336,7 @@ export function Sidebar() {
             {initials}
           </div>
           <div style={{ overflow: 'hidden', flex: 1 }}>
-            <div style={{ fontSize: 12.5, fontWeight: 600, color: '#1d1d1f', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: '#1d1d1f', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {fullName}
             </div>
             <div style={{ fontSize: 10, fontWeight: 600, color: roleInfo.color, marginTop: 1 }}>
@@ -165,30 +344,32 @@ export function Sidebar() {
             </div>
           </div>
         </div>
-        <button onClick={() => signOut()} style={{
-          display: 'flex', alignItems: 'center', gap: 7,
-          width: '100%', background: 'rgba(255,255,255,0.5)',
-          border: '1px solid rgba(209,213,219,0.6)',
-          color: '#6e6e73', borderRadius: 999, padding: '7px 12px',
-          fontSize: 12.5, fontWeight: 500, cursor: 'pointer',
-          transition: 'all .15s',
-          backdropFilter: 'blur(8px)',
-          WebkitBackdropFilter: 'blur(8px)',
-        }}
+
+        {/* Çıkış butonu */}
+        <button
+          onClick={() => signOut()}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 7,
+            width: '100%', background: 'rgba(255,255,255,0.5)',
+            border: '1px solid rgba(209,213,219,0.6)',
+            color: '#6e6e73', borderRadius: 999, padding: '7px 12px',
+            fontSize: 12, fontWeight: 500, cursor: 'pointer',
+            transition: 'all .15s',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+          }}
           onMouseEnter={e => {
-            e.currentTarget.style.borderColor = 'rgba(255,59,48,0.30)';
+            e.currentTarget.style.borderColor = 'rgba(255,59,48,0.3)';
             e.currentTarget.style.color = '#ff3b30';
             e.currentTarget.style.background = 'rgba(255,59,48,0.07)';
           }}
           onMouseLeave={e => {
-            e.currentTarget.style.borderColor = 'rgba(209,213,219,0.60)';
+            e.currentTarget.style.borderColor = 'rgba(209,213,219,0.6)';
             e.currentTarget.style.color = '#6e6e73';
             e.currentTarget.style.background = 'rgba(255,255,255,0.5)';
           }}
         >
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            {ICONS.logout}
-          </svg>
+          {ICONS.logout}
           Çıkış Yap
         </button>
       </div>
