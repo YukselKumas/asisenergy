@@ -1,28 +1,33 @@
 // ── Auth Store (Zustand) ───────────────────────────────────────────────
 // Kullanıcı oturum bilgilerini tutar.
 // Supabase Auth olaylarını dinler ve state'i günceller.
+// Roller: super_admin > company_admin > user
 
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase.js';
 
 export const useAuthStore = create((set, get) => ({
   // ── State ──────────────────────────────────────────────────────────
-  user:    null,    // Supabase auth user nesnesi
-  profile: null,    // profiles tablosundan gelen ek bilgi (name, role)
-  loading: true,    // İlk oturum kontrolü sırasında true
+  user:    null,   // Supabase auth user nesnesi
+  profile: null,   // profiles tablosundan: id, email, full_name, role, company_id
+  loading: true,   // İlk oturum kontrolü tamamlanana kadar true
 
   // ── Eylemler ──────────────────────────────────────────────────────
 
-  /** Oturum başlatma — uygulama yüklendiğinde çağrılır */
+  /** Uygulama açılışında çağrılır; try/finally garantisiyle loading kapanır */
   init: async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session?.user) {
-      set({ user: session.user });
-      await get().fetchProfile(session.user.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        set({ user: session.user });
+        await get().fetchProfile(session.user.id);
+      }
+    } catch (err) {
+      console.error('[auth] init error:', err);
+    } finally {
+      set({ loading: false });
     }
-    set({ loading: false });
 
-    // Auth durum değişikliklerini dinle (giriş/çıkış)
     supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user) {
         set({ user: session.user });
@@ -33,48 +38,52 @@ export const useAuthStore = create((set, get) => ({
     });
   },
 
-  /** Email + şifre ile giriş */
   signIn: async (email, password) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
   },
 
-  /** Yeni kullanıcı kaydı */
   signUp: async (email, password, name) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { name } },
+      options: { data: { full_name: name } },
     });
     if (error) throw error;
-    // Profiles tablosuna email + name kaydet
     if (data?.user) {
       await supabase.from('profiles').upsert({
-        id: data.user.id,
+        id:        data.user.id,
         email,
-        name,
-        role: 'user',
-        is_active: true,
+        full_name: name,
+        role:      'user',
       });
     }
   },
 
-  /** Çıkış */
   signOut: async () => {
     await supabase.auth.signOut();
     set({ user: null, profile: null });
   },
 
-  /** Kullanıcı profilini profiles tablosundan çek */
   fetchProfile: async (userId) => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
-    if (data) set({ profile: data });
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      if (data) set({ profile: data });
+    } catch (err) {
+      console.error('[auth] fetchProfile error:', err);
+    }
   },
 
-  /** Admin mi? */
-  isAdmin: () => get().profile?.role === 'admin',
+  /** Yalnızca süper admin mi? */
+  isSuperAdmin: () => get().profile?.role === 'super_admin',
+
+  /** Şirket yöneticisi veya üstü? */
+  isCompanyAdmin: () => ['super_admin', 'company_admin'].includes(get().profile?.role),
+
+  /** Herhangi bir yönetici mi? (eski isAdmin uyumu) */
+  isAdmin: () => ['super_admin', 'company_admin'].includes(get().profile?.role),
 }));
