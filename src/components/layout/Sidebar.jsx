@@ -4,8 +4,9 @@
 
 import { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { useAuthStore } from '../../store/authStore.js';
-import { MODULES } from '../../core/moduleRegistry.js';
+import { useAuthStore }   from '../../store/authStore.js';
+import { usePermissions } from '../../hooks/usePermissions.js';
+import { MODULES }        from '../../core/moduleRegistry.js';
 
 // ── Rol etiketleri ─────────────────────────────────────────────────────
 const ROLE_INFO = {
@@ -188,14 +189,13 @@ function SectionLabel({ children }) {
 // ── Ana bileşen ─────────────────────────────────────────────────────────
 export function Sidebar() {
   const { profile, signOut } = useAuthStore();
+  const { canAccessModule, canManageUsers, canManageDefinitions, isSuperAdmin, isAdmin } = usePermissions();
   const location = useLocation();
 
   const role     = profile?.role ?? 'user';
   const roleInfo = ROLE_INFO[role] ?? ROLE_INFO.user;
   const fullName = profile?.full_name || profile?.name || 'Kullanıcı';
   const initials = fullName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-  const isAdmin      = ['super_admin', 'company_admin'].includes(role);
-  const isSuperAdmin = role === 'super_admin';
 
   // Hangi accordion bölümlerinin açık olduğunu tut
   const [openSections, setOpenSections] = useState({});
@@ -254,6 +254,9 @@ export function Sidebar() {
         <SectionLabel>Modüller</SectionLabel>
 
         {MODULES.map(mod => {
+          // Erişim yoksa modülü gizle (comingSoon olanlar her zaman görünür ama disabled)
+          if (!mod.comingSoon && !canAccessModule(mod.id)) return null;
+
           const isModActive = (mod.navItems ?? []).some(item =>
             item.to === location.pathname ||
             (item.to !== '/' && location.pathname.startsWith(item.to.replace('/:id', '').replace(':id', '')))
@@ -286,8 +289,8 @@ export function Sidebar() {
           );
         })}
 
-        {/* ── Sistem (admin) ── */}
-        {isAdmin && (
+        {/* ── Sistem (admin veya ilgili yetkisi olan) ── */}
+        {(isAdmin || canManageUsers() || canManageDefinitions()) && (
           <>
             <SectionLabel>Sistem</SectionLabel>
             <AccordionSection
@@ -300,8 +303,12 @@ export function Sidebar() {
               openSections={openSections}
               onToggle={handleToggle}
             >
-              <NavItem to="/tanimlamalar" label="Tanımlamalar" iconKey="settings" accentColor="#636366" />
-              <NavItem to="/kullanicilar" label="Kullanıcılar"  iconKey="users"    accentColor="#636366" />
+              {canManageDefinitions() && (
+                <NavItem to="/tanimlamalar" label="Tanımlamalar" iconKey="settings" accentColor="#636366" />
+              )}
+              {canManageUsers() && (
+                <NavItem to="/kullanicilar" label="Kullanıcılar" iconKey="users" accentColor="#636366" />
+              )}
             </AccordionSection>
           </>
         )}
