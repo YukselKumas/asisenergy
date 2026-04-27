@@ -196,20 +196,23 @@ export function CompaniesPage() {
     e.preventDefault();
     if (!newName.trim()) return;
     setAdding(true);
-    const slug = slugify(newName.trim());
-    const { error } = await supabase.from('companies').insert({
-      name:      newName.trim(),
-      slug:      slug || `sirket-${Date.now()}`,
-      is_active: true,
-    });
-    if (error) showToast('Hata: ' + error.message);
-    else {
+    try {
+      const slug = slugify(newName.trim());
+      const { error } = await supabase.from('companies').insert({
+        name:      newName.trim(),
+        slug:      slug || `sirket-${Date.now()}`,
+        is_active: true,
+      });
+      if (error) throw error;
       showToast(`${newName.trim()} oluşturuldu ✓`);
       setNewName('');
       setShowAdd(false);
       await fetchCompanies();
+    } catch (err) {
+      showToast('Hata: ' + (err.message || 'Bilinmeyen hata'));
+    } finally {
+      setAdding(false);
     }
-    setAdding(false);
   }
 
   async function handleToggle(id, current) {
