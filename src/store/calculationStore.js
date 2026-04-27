@@ -7,6 +7,7 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase.js';
 import { PRICES, productBrandCat } from '../lib/calculator/constants.js';
 import { useDefinitionsStore } from './definitionsStore.js';
+import { useAuthStore } from './authStore.js';
 
 /** Varsayılan form değerleri — yeni hesaplama başlatıldığında kullanılır */
 export const DEFAULT_CONFIG = {
@@ -325,10 +326,14 @@ export const useCalculationStore = create((set, get) => ({
 
     const finalName = name || get().projectName || 'İsimsiz Proje';
 
+    const companyId = useAuthStore.getState().profile?.company_id ?? null;
+
     const buildPayload = (includeParent) => ({
       name:        finalName,
       description: description || null,
       created_by:  userId,
+      company_id:  companyId,
+      module_type: 'ppr_metraj',
       config,
       result,
       revisions,
@@ -387,16 +392,14 @@ export const useCalculationStore = create((set, get) => ({
   saveHistory: async (userId, result) => {
     const { config, projectId } = get();
     if (!projectId) return;
+    const companyId = useAuthStore.getState().profile?.company_id ?? null;
 
     await supabase.from('calculation_history').insert({
-      project_id:          projectId,
-      calculated_by:       userId,
-      input_snapshot:      config,
-      result_snapshot:     result,
-      total_amount_kdvsiz: result.grandNet,
-      total_amount_kdvli:  result.grandTotal,
-      total_pipe_m:        result.totalPipe,
-      total_flats:         result.totalFlats,
+      project_id: projectId,
+      company_id: companyId,
+      created_by: userId,
+      config,
+      result,
     });
   },
 }));
