@@ -9,7 +9,6 @@ import { NewCalculationPage } from './pages/NewCalculationPage.jsx';
 import { HistoryPage }        from './pages/HistoryPage.jsx';
 import { DefinitionsPage }    from './pages/DefinitionsPage.jsx';
 import { UsersPage }          from './pages/UsersPage.jsx';
-import { CompaniesPage }      from './pages/CompaniesPage.jsx';
 
 export const router = createBrowserRouter([
   {
@@ -25,7 +24,6 @@ export const router = createBrowserRouter([
       { path: 'gecmis',          element: <HistoryPage /> },
       { path: 'tanimlamalar',    element: <DefinitionsPage /> },
       { path: 'kullanicilar',    element: <UsersPage /> },
-      { path: 'sirketler',       element: <CompaniesPage /> },
     ],
   },
 ]);

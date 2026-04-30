@@ -171,7 +171,7 @@ export function DashboardPage() {
       {/* Başlık */}
       <div style={{ marginBottom:28 }}>
         <h1 style={{ fontSize:22, fontWeight:800, letterSpacing:'-.3px', marginBottom:5 }}>
-          Merhaba, <span style={{ color:'var(--acc)' }}>{profile?.name || 'Kullanıcı'}</span>
+          Merhaba, <span style={{ color:'var(--acc)' }}>{profile?.full_name || 'Kullanıcı'}</span>
         </h1>
         <p style={{ color:'var(--muted)', fontSize:13 }}>
           PPR metraj hesaplama sistemine hoş geldiniz.

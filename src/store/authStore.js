@@ -1,7 +1,7 @@
 // ── Auth Store (Zustand) ───────────────────────────────────────────────
 // Kullanıcı oturum bilgilerini tutar.
 // Supabase Auth olaylarını dinler ve state'i günceller.
-// Roller: super_admin > company_admin > user
+// Roller: super_admin → user
 
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase.js';
@@ -9,7 +9,7 @@ import { supabase } from '../lib/supabase.js';
 export const useAuthStore = create((set, get) => ({
   // ── State ──────────────────────────────────────────────────────────
   user:    null,   // Supabase auth user nesnesi
-  profile: null,   // profiles tablosundan: id, email, full_name, role, company_id
+  profile: null,   // profiles tablosundan: id, email, full_name, role, permissions
   loading: true,   // İlk oturum kontrolü tamamlanana kadar true
 
   // ── Eylemler ──────────────────────────────────────────────────────
@@ -78,12 +78,9 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
-  /** Yalnızca süper admin mi? */
+  /** Süper admin mi? */
   isSuperAdmin: () => get().profile?.role === 'super_admin',
 
-  /** Şirket yöneticisi veya üstü? */
-  isCompanyAdmin: () => ['super_admin', 'company_admin'].includes(get().profile?.role),
-
-  /** Herhangi bir yönetici mi? (eski isAdmin uyumu) */
-  isAdmin: () => ['super_admin', 'company_admin'].includes(get().profile?.role),
+  /** Yönetici mi? (sadece super_admin) */
+  isAdmin: () => get().profile?.role === 'super_admin',
 }));

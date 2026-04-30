@@ -1,13 +1,12 @@
 // ── usePermissions — Yetki kontrol hook'u ─────────────────────────────
 //
 // Rol hiyerarşisi:
-//   super_admin   → her şeye erişir
-//   company_admin → kendi şirketindeki her şeye erişir
-//   user          → profile.permissions JSONB'ye göre kısıtlı
+//   super_admin → her şeye erişir
+//   user        → profile.permissions JSONB'ye göre kısıtlı
 //
 // permissions JSONB yapısı:
 // {
-//   modules:             ["ppr_metraj"]   // boş/yok → tüm modüller
+//   modules:             ["ppr_metraj"]   // boş/yok → tüm modüller açık
 //   canManageUsers:      false
 //   canManageDefinitions:false
 // }
@@ -20,15 +19,14 @@ const ACTIVE_MODULE_IDS = MODULES.filter(m => !m.comingSoon).map(m => m.id);
 export function usePermissions() {
   const { profile } = useAuthStore();
 
-  const role = profile?.role ?? 'user';
-  const isSA = role === 'super_admin';
-  const isCA = role === 'company_admin';
+  const role  = profile?.role ?? 'user';
+  const isSA  = role === 'super_admin';
   const perms = profile?.permissions ?? {};
 
   /** Modüle erişim var mı? */
   function canAccessModule(moduleId) {
     if (!profile) return false;
-    if (isSA || isCA) return true;
+    if (isSA) return true;
     const list = perms.modules;
     if (!list || list.length === 0) return true;   // kısıtlama yok → hepsi açık
     return list.includes(moduleId);
@@ -36,21 +34,15 @@ export function usePermissions() {
 
   /** Kullanıcı yönetimi yetkisi */
   function canManageUsers() {
-    if (isSA || isCA) return true;
+    if (isSA) return true;
     return perms.canManageUsers === true;
   }
 
   /** Tanımlamalar (fiyat listesi vb.) yetkisi */
   function canManageDefinitions() {
-    if (isSA || isCA) return true;
+    if (isSA) return true;
     return perms.canManageDefinitions === true;
   }
-
-  /** Super admin mı? */
-  const isSuperAdmin = isSA;
-
-  /** Admin veya üstü mü? */
-  const isAdmin = isSA || isCA;
 
   /** Kullanıcının aktif modülleri */
   function accessibleModules() {
@@ -58,8 +50,8 @@ export function usePermissions() {
   }
 
   return {
-    isSuperAdmin,
-    isAdmin,
+    isSuperAdmin: isSA,
+    isAdmin:      isSA,
     canAccessModule,
     canManageUsers,
     canManageDefinitions,
