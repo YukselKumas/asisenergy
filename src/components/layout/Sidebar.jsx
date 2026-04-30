@@ -10,9 +10,8 @@ import { MODULES }        from '../../core/moduleRegistry.js';
 
 // ── Rol etiketleri ─────────────────────────────────────────────────────
 const ROLE_INFO = {
-  super_admin:   { label: 'Süper Admin', color: '#ff9f0a' },
-  company_admin: { label: 'Yönetici',    color: '#0071e3' },
-  user:          { label: 'Kullanıcı',   color: '#8e8e93' },
+  super_admin: { label: 'Süper Admin', color: '#ff9f0a' },
+  user:        { label: 'Kullanıcı',   color: '#8e8e93' },
 };
 
 // ── SVG İkon seti ──────────────────────────────────────────────────────
@@ -189,12 +188,12 @@ function SectionLabel({ children }) {
 // ── Ana bileşen ─────────────────────────────────────────────────────────
 export function Sidebar() {
   const { profile, signOut } = useAuthStore();
-  const { canAccessModule, canManageUsers, canManageDefinitions, isSuperAdmin, isAdmin } = usePermissions();
+  const { canAccessModule, canManageUsers, canManageDefinitions, isAdmin } = usePermissions();
   const location = useLocation();
 
   const role     = profile?.role ?? 'user';
   const roleInfo = ROLE_INFO[role] ?? ROLE_INFO.user;
-  const fullName = profile?.full_name || profile?.name || 'Kullanıcı';
+  const fullName = profile?.full_name || 'Kullanıcı';
   const initials = fullName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 
   // Hangi accordion bölümlerinin açık olduğunu tut
@@ -208,8 +207,7 @@ export function Sidebar() {
   }
 
   // Aktif rota tespiti
-  const isAdminActive    = ['/tanimlamalar', '/kullanicilar'].some(p => location.pathname.startsWith(p));
-  const isPlatformActive = location.pathname.startsWith('/sirketler');
+  const isAdminActive = ['/tanimlamalar', '/kullanicilar'].some(p => location.pathname.startsWith(p));
 
   return (
     <aside style={{
@@ -313,21 +311,6 @@ export function Sidebar() {
           </>
         )}
 
-        {/* ── Platform (süper admin) ── */}
-        {isSuperAdmin && (
-          <AccordionSection
-            sectionId="platform"
-            label="Platform"
-            iconKey="building"
-            isActive={isPlatformActive}
-            accentColor="#ff9f0a"
-            accentRgb="255,159,10"
-            openSections={openSections}
-            onToggle={handleToggle}
-          >
-            <NavItem to="/sirketler" label="Şirketler" iconKey="building" accentColor="#ff9f0a" />
-          </AccordionSection>
-        )}
       </nav>
 
       {/* ── Kullanıcı + Çıkış ── */}

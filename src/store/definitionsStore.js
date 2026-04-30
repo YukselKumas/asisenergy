@@ -1,13 +1,10 @@
 // ── Tanımlamalar Store (Zustand) ───────────────────────────────────────
 // Markalar, fiyat listeleri ve sistem ayarlarını Supabase'den çeker.
-// Tüm sorgular company_id bazlı — multi-tenant.
+// Tek tenant; sadece super_admin yazabilir, herkes okuyabilir.
 
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase.js';
 import { PRICES } from '../lib/calculator/constants.js';
-import { useAuthStore } from './authStore.js';
-
-const getCompanyId = () => useAuthStore.getState().profile?.company_id ?? null;
 
 export const useDefinitionsStore = create((set, get) => ({
   // ── State ──────────────────────────────────────────────────────────
@@ -21,16 +18,16 @@ export const useDefinitionsStore = create((set, get) => ({
 
   fetchBrands: async () => {
     set({ loading: true, error: null });
-    const companyId = getCompanyId();
-    let q = supabase.from('brands').select('*').eq('is_active', true).order('name');
-    if (companyId) q = q.eq('company_id', companyId);
-    const { data, error } = await q;
+    const { data, error } = await supabase
+      .from('brands')
+      .select('*')
+      .eq('is_active', true)
+      .order('name');
     if (error) { set({ error: error.message, loading: false }); return; }
     set({ brands: data || [], loading: false });
   },
 
   seedDefaultBrands: async () => {
-    const companyId = getCompanyId();
     const defaults = [
       { name:'Kalde',               category:'ppr',    description:'PP-R boru ve bağlantı parçaları' },
       { name:'Fırat Boru',          category:'ppr',    description:'PP-R boru ve bağlantı parçaları' },
@@ -42,14 +39,11 @@ export const useDefinitionsStore = create((set, get) => ({
       { name:'Kalde',               category:'filter', description:'Filtre ve çekvalf' },
     ];
 
-    let q = supabase.from('brands').select('name, category');
-    if (companyId) q = q.eq('company_id', companyId);
-    const { data: existing } = await q;
-
+    const { data: existing } = await supabase.from('brands').select('name, category');
     const existingSet = new Set((existing || []).map(b => `${b.name}|${b.category}`));
     const toInsert = defaults
       .filter(b => !existingSet.has(`${b.name}|${b.category}`))
-      .map(b => ({ ...b, is_active: true, ...(companyId ? { company_id: companyId } : {}) }));
+      .map(b => ({ ...b, is_active: true }));
 
     if (toInsert.length > 0) {
       const { error } = await supabase.from('brands').insert(toInsert);
@@ -60,10 +54,9 @@ export const useDefinitionsStore = create((set, get) => ({
   },
 
   addBrand: async (brand) => {
-    const companyId = getCompanyId();
     const { data, error } = await supabase
       .from('brands')
-      .insert({ ...brand, ...(companyId ? { company_id: companyId } : {}) })
+      .insert(brand)
       .select()
       .single();
     if (error) throw error;
@@ -111,7 +104,6 @@ export const useDefinitionsStore = create((set, get) => ({
   },
 
   seedBrandFromConstants: async (brandId, sourceOverrides = null) => {
-    const companyId = getCompanyId();
     const rows = PRICES.map(p => {
       const ov = sourceOverrides?.[p.id];
       return {
@@ -122,7 +114,7 @@ export const useDefinitionsStore = create((set, get) => ({
         discount_pct: p.disc,
       };
     });
-    await get().upsertPrices(brandId, rows, companyId);
+    await get().upsertPrices(brandId, rows);
   },
 
   fetchPriceList: async (brandId) => {
@@ -150,11 +142,9 @@ export const useDefinitionsStore = create((set, get) => ({
     }));
   },
 
-  upsertPrices: async (brandId, rows, companyIdOverride) => {
-    const companyId = companyIdOverride ?? getCompanyId();
+  upsertPrices: async (brandId, rows) => {
     const payload = rows.map(r => ({
       brand_id:     brandId,
-      company_id:   companyId,
       product_id:   r.product_id,
       product_name: r.product_name,
       unit:         r.unit,
