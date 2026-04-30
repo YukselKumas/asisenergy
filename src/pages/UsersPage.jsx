@@ -318,27 +318,40 @@ export function UsersPage() {
     }
     setAdding(true);
     try {
+      // signUp süper admin oturumunu yeni kullanıcıyla değiştirir; geri yüklemek için sakla
+      const { data: { session: prevSession } } = await supabase.auth.getSession();
+
       const { data, error } = await supabase.auth.signUp({
         email:    newUser.email.trim(),
         password: newUser.password,
         options:  { data: { full_name: newUser.full_name.trim() } },
       });
       if (error) throw error;
+      if (!data?.user) throw new Error('Kullanıcı oluşturulamadı');
 
-      if (data?.user) {
-        const { error: pe } = await supabase.from('profiles').upsert({
-          id:          data.user.id,
-          email:       newUser.email.trim(),
-          full_name:   newUser.full_name.trim(),
-          role:        newUser.role,
-          permissions: {},
+      // Trigger (handle_new_user) profili role='user' ile otomatik oluşturur.
+      // Farklı rol seçildiyse veya isim trigger'da boş geldiyse UPDATE et.
+      const patch = { full_name: newUser.full_name.trim() };
+      if (newUser.role !== 'user') patch.role = newUser.role;
+
+      const { error: pe } = await supabase
+        .from('profiles')
+        .update(patch)
+        .eq('id', data.user.id);
+      if (pe) console.warn('Profil güncellenemedi:', pe.message);
+
+      // Süper admin oturumunu geri yükle
+      if (prevSession) {
+        await supabase.auth.setSession({
+          access_token:  prevSession.access_token,
+          refresh_token: prevSession.refresh_token,
         });
-        if (pe) throw pe;
-        showToast(`${newUser.full_name} eklendi ✓`);
-        setShowAdd(false);
-        setNewUser(EMPTY_NEW);
-        await fetchData();
       }
+
+      showToast(`${newUser.full_name} eklendi ✓`);
+      setShowAdd(false);
+      setNewUser(EMPTY_NEW);
+      await fetchData();
     } catch (err) {
       showToast('Hata: ' + (err.message || 'Bilinmeyen hata'));
     } finally {
