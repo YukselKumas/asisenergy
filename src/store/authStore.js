@@ -39,8 +39,18 @@ export const useAuthStore = create((set, get) => ({
   },
 
   signIn: async (email, password) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
+    // Pasif kullanıcı girişini engelle
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('is_active')
+      .eq('id', data.user.id)
+      .single();
+    if (prof?.is_active === false) {
+      await supabase.auth.signOut();
+      throw new Error('Hesabınız devre dışı bırakılmıştır. Yöneticinizle iletişime geçin.');
+    }
   },
 
   signUp: async (email, password, name) => {
@@ -72,7 +82,13 @@ export const useAuthStore = create((set, get) => ({
         .select('*')
         .eq('id', userId)
         .single();
-      if (data) set({ profile: data });
+      if (data) {
+        if (data.is_active === false) {
+          await get().signOut();
+          return;
+        }
+        set({ profile: data });
+      }
     } catch (err) {
       console.error('[auth] fetchProfile error:', err);
     }

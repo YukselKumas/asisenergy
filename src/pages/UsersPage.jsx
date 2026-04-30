@@ -14,6 +14,7 @@ import { supabase }        from '../lib/supabase.js';
 import { showToast }       from '../components/ui/Toast.jsx';
 import { GlassSelect }     from '../components/ui/GlassSelect.jsx';
 import { usePermissions }  from '../hooks/usePermissions.js';
+import { useAuthStore }    from '../store/authStore.js';
 import { MODULES }         from '../core/moduleRegistry.js';
 
 const TR_DATE = d => new Date(d).toLocaleDateString('tr-TR');
@@ -167,22 +168,27 @@ function ExtraPermChips({ userId, currentPerms, onSave, disabled }) {
 }
 
 // ── Kullanıcı satırı ────────────────────────────────────────────────────
-function UserRow({ u, onUpdate, onReset, saving, resetLoading }) {
-  const isSavingThis = saving === u.id;
-  const isResetting  = resetLoading === u.id;
-  const name         = u.full_name || '';
-  const initials     = (name || u.email || 'U').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-  const chip         = ROLE_CHIP[u.role] ?? ROLE_CHIP.user;
+function UserRow({ u, onUpdate, onReset, onToggleActive, saving, resetLoading, toggleLoading, currentUserId }) {
+  const isSavingThis    = saving === u.id;
+  const isResetting     = resetLoading === u.id;
+  const isTogglingThis  = toggleLoading === u.id;
+  const isCurrentUser   = u.id === currentUserId;
+  const isActive        = u.is_active !== false;
+  const name            = u.full_name || '';
+  const initials        = (name || u.email || 'U').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  const chip            = ROLE_CHIP[u.role] ?? ROLE_CHIP.user;
 
   return (
-    <tr style={{ borderBottom: '1px solid var(--border)' }}>
+    <tr style={{ borderBottom: '1px solid var(--border)', opacity: isActive ? 1 : 0.55 }}>
 
       {/* Ad Soyad */}
       <td style={{ padding: '11px 14px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
           <div style={{
             width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-            background: `linear-gradient(135deg,${chip.color}cc,${chip.color}88)`,
+            background: isActive
+              ? `linear-gradient(135deg,${chip.color}cc,${chip.color}88)`
+              : 'linear-gradient(135deg,#94a3b8,#cbd5e1)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: 11, fontWeight: 800, color: '#fff',
           }}>{initials}</div>
@@ -259,6 +265,30 @@ function UserRow({ u, onUpdate, onReset, saving, resetLoading }) {
           <span style={{ fontSize: 11, color: '#f59e0b', fontWeight: 600 }}>⚠ Email gerekli</span>
         )}
       </td>
+
+      {/* Aktif / Pasif */}
+      <td style={{ padding: '11px 14px', whiteSpace: 'nowrap' }}>
+        {isCurrentUser ? (
+          <span style={{ fontSize: 10, color: 'var(--muted)', fontStyle: 'italic' }}>Kendiniz</span>
+        ) : (
+          <button
+            disabled={isTogglingThis}
+            onClick={() => onToggleActive(u.id, isActive)}
+            title={isActive ? 'Kullanıcıyı devre dışı bırak' : 'Kullanıcıyı aktif et'}
+            style={{
+              fontSize: 11, fontWeight: 700, borderRadius: 6, padding: '4px 10px',
+              border: `1.5px solid ${isActive ? '#dc2626' : '#16a34a'}`,
+              background: isActive ? '#fff1f2' : '#f0fdf4',
+              color: isActive ? '#dc2626' : '#16a34a',
+              cursor: isTogglingThis ? 'not-allowed' : 'pointer',
+              opacity: isTogglingThis ? 0.6 : 1,
+              transition: 'all .15s',
+            }}
+          >
+            {isTogglingThis ? '...' : isActive ? 'Pasife Al' : 'Aktif Et'}
+          </button>
+        )}
+      </td>
     </tr>
   );
 }
@@ -266,20 +296,22 @@ function UserRow({ u, onUpdate, onReset, saving, resetLoading }) {
 // ── Ana sayfa ──────────────────────────────────────────────────────────
 export function UsersPage() {
   const { isSuperAdmin } = usePermissions();
+  const { user: currentUser } = useAuthStore();
 
-  const [users,        setUsers]        = useState([]);
-  const [loading,      setLoading]      = useState(true);
-  const [saving,       setSaving]       = useState(null);
-  const [resetLoading, setResetLoading] = useState(null);
-  const [showAdd,      setShowAdd]      = useState(false);
-  const [newUser,      setNewUser]      = useState(EMPTY_NEW);
-  const [adding,       setAdding]       = useState(false);
+  const [users,         setUsers]         = useState([]);
+  const [loading,       setLoading]       = useState(true);
+  const [saving,        setSaving]        = useState(null);
+  const [resetLoading,  setResetLoading]  = useState(null);
+  const [toggleLoading, setToggleLoading] = useState(null);
+  const [showAdd,       setShowAdd]       = useState(false);
+  const [newUser,       setNewUser]       = useState(EMPTY_NEW);
+  const [adding,        setAdding]        = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, email, full_name, role, permissions, created_at')
+      .select('id, email, full_name, role, permissions, created_at, is_active')
       .order('created_at', { ascending: false });
 
     if (error) showToast('Kullanıcılar yüklenemedi: ' + error.message);
@@ -308,6 +340,20 @@ export function UsersPage() {
     if (error) showToast('Hata: ' + error.message);
     else showToast(`Şifre sıfırlama maili → ${email}`);
     setResetLoading(null);
+  }
+
+  async function toggleActive(userId, currentlyActive) {
+    setToggleLoading(userId);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ is_active: !currentlyActive })
+      .eq('id', userId);
+    if (error) showToast('Hata: ' + error.message);
+    else {
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_active: !currentlyActive } : u));
+      showToast(currentlyActive ? 'Kullanıcı pasife alındı' : 'Kullanıcı aktif edildi');
+    }
+    setToggleLoading(null);
   }
 
   async function handleAddUser(e) {
@@ -363,6 +409,7 @@ export function UsersPage() {
     total:   users.length,
     admins:  users.filter(u => u.role === 'super_admin').length,
     users:   users.filter(u => u.role === 'user').length,
+    passive: users.filter(u => u.is_active === false).length,
   };
 
   if (!isSuperAdmin) {
@@ -448,6 +495,7 @@ export function UsersPage() {
         <div className="kpi"><div className="kl">Toplam</div><div className="kv cacc">{stats.total}</div></div>
         <div className="kpi"><div className="kl">Süper Admin</div><div className="kv" style={{ color: '#b45309' }}>{stats.admins}</div></div>
         <div className="kpi"><div className="kl">Kullanıcı</div><div className="kv" style={{ color: '#16a34a' }}>{stats.users}</div></div>
+        <div className="kpi"><div className="kl">Pasif</div><div className="kv" style={{ color: '#dc2626' }}>{stats.passive}</div></div>
       </div>
 
       {/* Tablo */}
@@ -461,7 +509,7 @@ export function UsersPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--border)', background: 'rgba(0,0,0,0.02)' }}>
-                  {['Ad Soyad', 'Email', 'Rol', 'Modül & Ek Yetkiler', 'Kayıt', 'Şifre'].map(h => (
+                  {['Ad Soyad', 'Email', 'Rol', 'Modül & Ek Yetkiler', 'Kayıt', 'Şifre', 'Durum'].map(h => (
                     <th key={h} style={{ textAlign: 'left', padding: '10px 14px', fontSize: 11, fontWeight: 700, letterSpacing: '.4px', textTransform: 'uppercase', color: 'var(--muted)', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -473,8 +521,11 @@ export function UsersPage() {
                     u={u}
                     onUpdate={updateProfile}
                     onReset={sendPasswordReset}
+                    onToggleActive={toggleActive}
                     saving={saving}
                     resetLoading={resetLoading}
+                    toggleLoading={toggleLoading}
+                    currentUserId={currentUser?.id}
                   />
                 ))}
               </tbody>

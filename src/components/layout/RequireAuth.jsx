@@ -7,7 +7,7 @@ import { Navigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore.js';
 
 export function RequireAuth({ children }) {
-  const { user, loading } = useAuthStore();
+  const { user, profile, loading } = useAuthStore();
   const [timedOut, setTimedOut] = useState(false);
 
   // 5 saniye sonra hâlâ loading=true ise zorla kapat
@@ -33,7 +33,7 @@ export function RequireAuth({ children }) {
     );
   }
 
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user || profile?.is_active === false) return <Navigate to="/login" replace />;
 
   return children;
 }
