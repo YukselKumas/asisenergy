@@ -6,6 +6,11 @@ import { create } from 'zustand';
 import { supabase } from '../lib/supabase.js';
 import { PRICES } from '../lib/calculator/constants.js';
 
+const withTimeout = (p, ms) => Promise.race([
+  p,
+  new Promise((_, r) => setTimeout(() => r(new Error('Bağlantı zaman aşımı')), ms)),
+]);
+
 export const useDefinitionsStore = create((set, get) => ({
   // ── State ──────────────────────────────────────────────────────────
   brands:        [],
@@ -18,13 +23,18 @@ export const useDefinitionsStore = create((set, get) => ({
 
   fetchBrands: async () => {
     set({ loading: true, error: null });
-    const { data, error } = await supabase
-      .from('brands')
-      .select('*')
-      .eq('is_active', true)
-      .order('name');
-    if (error) { set({ error: error.message, loading: false }); return; }
-    set({ brands: data || [], loading: false });
+    try {
+      const { data, error } = await withTimeout(
+        supabase.from('brands').select('*').eq('is_active', true).order('name'),
+        10000
+      );
+      if (error) throw error;
+      set({ brands: data || [] });
+    } catch (err) {
+      set({ error: err.message });
+    } finally {
+      set({ loading: false });
+    }
   },
 
   seedDefaultBrands: async () => {
@@ -120,14 +130,18 @@ export const useDefinitionsStore = create((set, get) => ({
 
   fetchPriceList: async (brandId) => {
     set({ loading: true });
-    const { data, error } = await supabase
-      .from('price_lists')
-      .select('*')
-      .eq('brand_id', brandId)
-      .eq('is_active', true)
-      .order('product_id');
-    if (error) { set({ error: error.message, loading: false }); return; }
-    set({ priceLists: data, loading: false });
+    try {
+      const { data, error } = await withTimeout(
+        supabase.from('price_lists').select('*').eq('brand_id', brandId).eq('is_active', true).order('product_id'),
+        10000
+      );
+      if (error) throw error;
+      set({ priceLists: data || [] });
+    } catch (err) {
+      set({ error: err.message });
+    } finally {
+      set({ loading: false });
+    }
   },
 
   updatePrice: async (id, updates) => {
