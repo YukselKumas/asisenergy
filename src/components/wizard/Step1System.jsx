@@ -37,7 +37,7 @@ function FloorStepper({ value, onChange, min = -20, max = 250 }) {
 
 export function Step1System({ goStep }) {
   const { config, setConfig, loadBrandPrices } = useCalculationStore();
-  const { brands, fetchBrands } = useDefinitionsStore();
+  const { brands, loading: brandsLoading, brandsError, fetchBrands } = useDefinitionsStore();
   const c = config;
 
   // İlk yüklemede markaları DB'den çek
@@ -66,6 +66,23 @@ export function Step1System({ goStep }) {
           Her kategori için marka seçin. Markalar <strong>Tanımlamalar</strong> sayfasından yönetilir.
           Fiyatlar seçilen markaya göre otomatik yüklenir.
         </p>
+        {brandsLoading && brands.length === 0 && (
+          <div style={{ fontSize:12, color:'var(--muted)', padding:'8px 0', marginBottom:8 }}>
+            Markalar yükleniyor...
+          </div>
+        )}
+        {brandsError && brands.length === 0 && (
+          <div style={{ display:'flex', alignItems:'center', gap:10, fontSize:12, color:'var(--warn)', background:'rgba(251,191,36,0.1)', border:'1px solid rgba(251,191,36,0.3)', borderRadius:'var(--r3)', padding:'8px 12px', marginBottom:12 }}>
+            <span>⚠ Markalar yüklenemedi. {brandsError}</span>
+            <button
+              type="button"
+              onClick={() => fetchBrands(true)}
+              style={{ marginLeft:'auto', padding:'3px 10px', fontSize:12, cursor:'pointer', borderRadius:'var(--r2)', border:'1px solid var(--warn)', background:'transparent', color:'var(--warn)', fontWeight:600 }}
+            >
+              Tekrar Dene
+            </button>
+          </div>
+        )}
         <div className="g g4">
           <Field label="PPR Boru & Bağlantı" hint="Boru, dirsek, te, redüksiyon">
             <GlassSelect value={c.markaPpr} onChange={e => { upd('markaPpr', e.target.value); loadBrandPrices('ppr', e.target.value); }}>

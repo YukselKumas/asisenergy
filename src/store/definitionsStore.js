@@ -11,6 +11,9 @@ const withTimeout = (p, ms) => Promise.race([
   new Promise((_, r) => setTimeout(() => r(new Error('Bağlantı zaman aşımı')), ms)),
 ]);
 
+// Eş zamanlı birden fazla fetchBrands çağrısını önler (race condition fix)
+let _brandsInFlight = false;
+
 export const useDefinitionsStore = create((set, get) => ({
   // ── State ──────────────────────────────────────────────────────────
   brands:        [],
@@ -18,22 +21,39 @@ export const useDefinitionsStore = create((set, get) => ({
   systemConfigs: {},
   loading:       false,
   error:         null,
+  brandsError:   null,   // Marka yüklenme hatası (ayrı state, sessiz retry için)
 
   // ── Markalar ──────────────────────────────────────────────────────
 
-  fetchBrands: async () => {
-    set({ loading: true, error: null });
+  fetchBrands: async (force = false) => {
+    const { brands } = get();
+    // Cache: brands zaten yüklüyse force=false ise tekrar fetch etme
+    if (!force && brands.length > 0) return;
+    // Race condition guard: zaten bir fetch uçuştaysa yeni başlatma
+    if (_brandsInFlight) return;
+
+    _brandsInFlight = true;
+    set({ loading: true, brandsError: null });
     try {
       const { data, error } = await withTimeout(
         supabase.from('brands').select('*').eq('is_active', true).order('name'),
-        10000
+        12000
       );
       if (error) throw error;
-      set({ brands: data || [] });
+      set({ brands: data || [], brandsError: null });
     } catch (err) {
-      set({ error: err.message });
+      set({ brandsError: err.message });
+      // Sessiz auto-retry: eğer brands hâlâ boşsa 3 sn sonra tekrar dene
+      setTimeout(() => {
+        if (get().brands.length === 0) {
+          _brandsInFlight = false;
+          get().fetchBrands(true);
+        }
+      }, 3000);
+      return; // finally'de flag temizlenir
     } finally {
       set({ loading: false });
+      _brandsInFlight = false;
     }
   },
 
