@@ -121,6 +121,15 @@ export const DEFAULT_CONFIG = {
   // Adım 5 — Fiyat geçersizlemeleri
   priceOverride: {},  // {product_id: {list, disc}}
   kdvRate: 0.20,
+
+  // Mühendislik parametreleri (bilimsel hesaplama modülleri için)
+  inletPressure_bar:  4.0,    // bina giriş basıncı (bar)
+  ambientTemp_C:      20,     // ortam/bodrum sıcaklığı (°C)
+  hotWaterTemp_C:     60,     // sıcak su dağıtım sıcaklığı (°C)
+  circReturnTemp_C:   55,     // sirkülasyon dönüş sıcaklığı (°C)
+  coldMaxTemp_C:      25,     // soğuk hat max sıcaklık (°C)
+  pipeMaterial:       'ppr',  // 'ppr' | 'pprct' | 'pprfb'
+  insulationEnabled:  true,   // GEG izolasyon hesabı aktif mi
 };
 
 export const useCalculationStore = create((set, get) => ({

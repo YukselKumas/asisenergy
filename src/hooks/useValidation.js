@@ -236,7 +236,7 @@ function computeARE(config, pipeYatay, pipeDikey) {
 /**
  * 0-100 arası genel doğrulama puanı.
  */
-function computeScore(idr, qai, are) {
+function computeScore(idr, qai, are, sciWarnings = 0) {
   let score = 100;
   score -= idr.length * 10;
   if      (qai.avg > 30) score -= 20;
@@ -244,7 +244,56 @@ function computeScore(idr, qai, are) {
   else if (qai.avg > 10) score -=  5;
   if      (are.ratio < 60) score -= 15;
   else if (are.ratio < 80) score -=  8;
+  // Her bilimsel hata -8, uyarı -3
+  score -= sciWarnings * 5;
   return Math.max(0, Math.min(100, score));
+}
+
+/**
+ * Bilimsel analiz (pressure, velocity, hygiene, expansion) uyarılarını derler.
+ */
+function gatherSciWarnings(result) {
+  const warnings = [];
+
+  // Basınç bütçesi
+  if (result.pressureAnalysis?.warnings) {
+    result.pressureAnalysis.warnings.forEach(w => warnings.push(w));
+  }
+
+  // Hız kontrolleri
+  if (result.velocityChecks) {
+    result.velocityChecks.forEach(c => {
+      if (c.status === 'error') {
+        warnings.push({
+          code: `VELOCITY_${c.line.toUpperCase()}_EXCEEDED`,
+          severity: 'error',
+          message: `${c.label} hattı: ${c.diam.toUpperCase()} çapında hız ${c.velocity.toFixed(2)} m/s (max ${c.vMax} m/s). Çap büyütme önerilir: ${c.suggestedDiam?.toUpperCase() || '—'}.`,
+        });
+      } else if (c.status === 'warn') {
+        warnings.push({
+          code: `VELOCITY_${c.line.toUpperCase()}_WARN`,
+          severity: 'warn',
+          message: `${c.label} hattı: hız %85 limitinde (${c.velocity.toFixed(2)} m/s). Kontrol edin.`,
+        });
+      }
+    });
+  }
+
+  // Hijyen
+  if (result.hygieneAnalysis?.warnings) {
+    result.hygieneAnalysis.warnings.forEach(w => warnings.push(w));
+  }
+
+  // Genleşme / kompansatör
+  if (result.expansionSummary?.totalCompensators > 0) {
+    warnings.push({
+      code: 'EXPANSION_COMPENSATORS_REQUIRED',
+      severity: 'warn',
+      message: `Termal genleşme analizi: ${result.expansionSummary.totalCompensators} adet kompansatör (PPR genleşme kolu) gerekli. Toplam ΔL=${result.expansionSummary.totalDeltaL_mm} mm.`,
+    });
+  }
+
+  return warnings;
 }
 
 /**
@@ -295,9 +344,20 @@ export function useValidation(config, result) {
       const effectiveLength = computeEffectiveLength(result, pipeYatay, pipeDikey);
       const idr            = computeIDR(config, result);
       const are            = computeARE(config, pipeYatay, pipeDikey);
-      const score          = computeScore(idr, qai, are);
+      const sciWarnings    = gatherSciWarnings(result);
+      const errorCount     = sciWarnings.filter(w => w.severity === 'error').length;
+      const score          = computeScore(idr, qai, are, errorCount);
 
-      return { score, idr, qai, are, suggestedFittings, actualFittings, effectiveLength };
+      return {
+        score, idr, qai, are, suggestedFittings, actualFittings, effectiveLength,
+        sciWarnings,
+        pressureAnalysis:    result.pressureAnalysis    || null,
+        velocityChecks:      result.velocityChecks      || null,
+        circulationAnalysis: result.circulationAnalysis || null,
+        expansionSummary:    result.expansionSummary    || null,
+        insulationSummary:   result.insulationSummary   || null,
+        hygieneAnalysis:     result.hygieneAnalysis     || null,
+      };
     } catch (err) {
       console.error('[useValidation]', err);
       return null;

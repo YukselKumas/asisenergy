@@ -147,6 +147,141 @@ function ScoreCard({ label, value, sub, color }) {
   );
 }
 
+const SCI_COLOR = { ok:'#22c55e', warn:'#f59e0b', error:'#ef4444', info:'#3b82f6' };
+
+function SciWarningList({ warnings }) {
+  if (!warnings?.length) return null;
+  return (
+    <div style={{ marginBottom:14, padding:'10px 14px', background:'rgba(239,68,68,0.04)', border:'1px solid rgba(239,68,68,0.20)', borderRadius:'var(--r2)' }}>
+      {warnings.map((w, i) => (
+        <div key={i} style={{ fontSize:12, color: w.severity === 'error' ? '#ef4444' : '#f59e0b', marginBottom:3, lineHeight:1.5 }}>
+          {w.severity === 'error' ? '❌' : '⚠️'} {w.message}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PressureSection({ pa }) {
+  if (!pa) return null;
+  const color = pa.remaining_bar >= 1.0 ? '#22c55e' : '#ef4444';
+  return (
+    <div style={{ marginBottom:14, padding:'12px 16px', background:'rgba(59,130,246,0.04)', border:'1px solid var(--border)', borderRadius:'var(--r2)' }}>
+      <div style={{ fontSize:13, fontWeight:700, marginBottom:10 }}>Basınç Bütçesi (Darcy-Weisbach)</div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(140px, 1fr))', gap:8, fontSize:12 }}>
+        {[
+          { l:'Giriş Basıncı', v:`${pa.inletPressure_bar} bar`, c:'#3b82f6' },
+          { l:'Statik Kayıp',  v:`${pa.staticDrop_bar} bar`,    c:'#f59e0b' },
+          { l:'Sürtünme Kaybı',v:`${pa.frictionDrop_bar} bar`,  c:'#f59e0b' },
+          { l:'Lokal Kayıp',   v:`${pa.localDrop_bar} bar`,     c:'#f59e0b' },
+          { l:'Toplam Kayıp',  v:`${pa.totalDrop_bar} bar`,     c:'#ef4444' },
+          { l:'Kalan Basınç',  v:`${pa.remaining_bar} bar`,     c: color },
+        ].map(item => (
+          <div key={item.l} style={{ textAlign:'center' }}>
+            <div style={{ fontSize:10, color:'var(--muted)', fontWeight:700 }}>{item.l}</div>
+            <div style={{ fontSize:16, fontWeight:800, color:item.c }}>{item.v}</div>
+          </div>
+        ))}
+      </div>
+      {pa.warnings?.length > 0 && <SciWarningList warnings={pa.warnings} />}
+    </div>
+  );
+}
+
+function VelocitySection({ checks }) {
+  if (!checks?.length) return null;
+  return (
+    <div style={{ marginBottom:14 }}>
+      <div style={{ fontSize:13, fontWeight:700, marginBottom:8 }}>Akış Hızı Kontrolü (DIN 1988-300)</div>
+      <div className="rtw">
+        <table style={{ minWidth:480 }}>
+          <thead>
+            <tr>
+              <th>Hat</th><th>Çap</th>
+              <th style={{ textAlign:'right' }}>Debi (L/s)</th>
+              <th style={{ textAlign:'right' }}>Hız (m/s)</th>
+              <th style={{ textAlign:'right' }}>Limit</th>
+              <th style={{ textAlign:'center' }}>Durum</th>
+            </tr>
+          </thead>
+          <tbody>
+            {checks.map((c, i) => (
+              <tr key={i}>
+                <td>{c.label}</td>
+                <td style={{ fontFamily:'var(--mono)', fontWeight:600 }}>{c.diam?.toUpperCase()}</td>
+                <td style={{ textAlign:'right', fontFamily:'var(--mono)' }}>{c.Q_lps?.toFixed(3)}</td>
+                <td style={{ textAlign:'right', fontFamily:'var(--mono)', color: SCI_COLOR[c.status] }}>{c.velocity?.toFixed(2)}</td>
+                <td style={{ textAlign:'right', fontFamily:'var(--mono)' }}>{c.vMax}</td>
+                <td style={{ textAlign:'center' }}>
+                  {c.status === 'ok' ? '✅' : c.status === 'warn' ? '⚠️' : '❌'}
+                  {c.suggestedDiam && c.status !== 'ok' && (
+                    <span style={{ fontSize:10, color:'var(--muted)', marginLeft:4 }}>→ {c.suggestedDiam?.toUpperCase()}</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function CirculationSection({ circ }) {
+  if (!circ) return null;
+  return (
+    <div style={{ marginBottom:14, padding:'12px 16px', background:'rgba(168,85,247,0.04)', border:'1px solid rgba(168,85,247,0.2)', borderRadius:'var(--r2)' }}>
+      <div style={{ fontSize:13, fontWeight:700, marginBottom:10, color:'var(--circ,#7c3aed)' }}>Sirkülasyon Analizi (DVGW W 553)</div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(150px, 1fr))', gap:8, fontSize:12 }}>
+        {[
+          { l:'Isı Kaybı',       v:`${circ.heatLoss_W?.toFixed(0)} W` },
+          { l:'Debi',            v:`${circ.flow_lph?.toFixed(0)} L/h` },
+          { l:'Dönüş Çapı',      v: circ.suggestedReturnDiam?.toUpperCase() || '—' },
+          { l:'Dönüş Hızı',      v: circ.returnVelocity ? `${circ.returnVelocity} m/s` : '—' },
+          { l:'Pompa Basma H.',  v:`${circ.pumpHead_m} m SS` },
+          { l:'Sirkülasyon L.',  v:`${circ.totalCircLength_m?.toFixed(0)} m` },
+        ].map(item => (
+          <div key={item.l} style={{ textAlign:'center' }}>
+            <div style={{ fontSize:10, color:'var(--muted)', fontWeight:700 }}>{item.l}</div>
+            <div style={{ fontSize:15, fontWeight:800 }}>{item.v}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ExpansionSection({ exp }) {
+  if (!exp || exp.totalCompensators === 0) return null;
+  return (
+    <div style={{ marginBottom:14, padding:'12px 16px', background:'rgba(251,146,60,0.06)', border:'1px solid rgba(251,146,60,0.3)', borderRadius:'var(--r2)' }}>
+      <div style={{ fontSize:13, fontWeight:700, marginBottom:6, color:'#ea580c' }}>Termal Genleşme (EN 806-3 / PPR α)</div>
+      <div style={{ fontSize:12, color:'#ea580c' }}>
+        Toplam genleşme: <strong>{exp.totalDeltaL_mm} mm</strong> — Gerekli kompansatör: <strong>{exp.totalCompensators} adet</strong>
+      </div>
+      {Object.entries(exp.byDiam || {}).map(([d, cnt]) => (
+        <div key={d} style={{ fontSize:12, color:'var(--muted)', marginTop:2 }}>• {d.toUpperCase()}: {cnt} adet</div>
+      ))}
+    </div>
+  );
+}
+
+function HygieneSection({ hyg }) {
+  if (!hyg) return null;
+  const color = hyg.ok ? '#22c55e' : hyg.errorCount > 0 ? '#ef4444' : '#f59e0b';
+  return (
+    <div style={{ marginBottom:14, padding:'12px 16px', background:`rgba(${hyg.ok?'34,197,94':'239,68,68'},0.04)`, border:`1px solid ${color}33`, borderRadius:'var(--r2)' }}>
+      <div style={{ fontSize:13, fontWeight:700, marginBottom:6, color }}>
+        Hijyen Analizi (VDI 6023 / DVGW W 551) — {hyg.ok ? '✅ Uygun' : `${hyg.errorCount} hata / ${hyg.warnCount} uyarı`}
+      </div>
+      {hyg.warnings?.length > 0 && <SciWarningList warnings={hyg.warnings} />}
+      {hyg.ok && (
+        <div style={{ fontSize:12, color:'#22c55e' }}>Tüm sıcaklık ve hacim kriterleri standartlara uygun.</div>
+      )}
+    </div>
+  );
+}
+
 const ValidationSection = memo(function ValidationSection({ config, result, projectId }) {
   const { validation, save } = useValidation(config, result);
   const [saving, setSaving]  = useState(false);
@@ -154,7 +289,9 @@ const ValidationSection = memo(function ValidationSection({ config, result, proj
 
   if (!validation) return null;
 
-  const { score, idr, qai, are, effectiveLength } = validation;
+  const { score, idr, qai, are, effectiveLength, sciWarnings,
+          pressureAnalysis, velocityChecks, circulationAnalysis,
+          expansionSummary, hygieneAnalysis } = validation;
 
   const scoreColor = score >= 80 ? '#22c55e' : score >= 60 ? '#f59e0b' : '#ef4444';
   const scoreLabel = score >= 80 ? 'İyi'     : score >= 60 ? 'Orta'    : 'Düşük';
@@ -261,6 +398,29 @@ const ValidationSection = memo(function ValidationSection({ config, result, proj
           </div>
         </div>
       </div>
+
+      {/* ── Bilimsel analiz uyarıları ── */}
+      {sciWarnings?.length > 0 && (
+        <div style={{ marginBottom:14 }}>
+          <div style={{ fontSize:13, fontWeight:700, marginBottom:6 }}>Mühendislik Uyarıları</div>
+          <SciWarningList warnings={sciWarnings} />
+        </div>
+      )}
+
+      {/* ── Basınç bütçesi ── */}
+      <PressureSection pa={pressureAnalysis} />
+
+      {/* ── Hız kontrolleri ── */}
+      <VelocitySection checks={velocityChecks} />
+
+      {/* ── Sirkülasyon analizi ── */}
+      <CirculationSection circ={circulationAnalysis} />
+
+      {/* ── Termal genleşme ── */}
+      <ExpansionSection exp={expansionSummary} />
+
+      {/* ── Hijyen analizi ── */}
+      <HygieneSection hyg={hygieneAnalysis} />
 
       {/* ── Kaydet ── */}
       <div style={{ display:'flex', alignItems:'center', gap:8 }}>
