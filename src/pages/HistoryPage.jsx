@@ -35,14 +35,14 @@ function VaryasyonCompareModal({ parent, variants, onClose }) {
     ...v,
     result: v.result ? {
       ...v.result,
-      _perFlat: v.result.totalFlats > 0 ? Math.round(v.result.grandTotal / v.result.totalFlats) : null,
+      _perFlat: (v.result.totalFlats > 0 && v.result.grandTotal != null) ? Math.round(v.result.grandTotal / v.result.totalFlats) : null,
     } : null,
   }));
 
   // Her metrik için en iyi değeri bul
   function bestValue(key, best) {
     if (!best) return null;
-    const vals = versionsWithDerived.map(v => v.result?.[key]).filter(x => typeof x === 'number');
+    const vals = versionsWithDerived.map(v => v.result?.[key]).filter(x => typeof x === 'number' && !isNaN(x));
     if (vals.length === 0) return null;
     return best === 'min' ? Math.min(...vals) : Math.max(...vals);
   }
