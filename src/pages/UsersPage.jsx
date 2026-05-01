@@ -305,6 +305,7 @@ export function UsersPage() {
 
   const [users,         setUsers]         = useState([]);
   const [loading,       setLoading]       = useState(true);
+  const [fetchError,    setFetchError]    = useState(null);
   const [saving,        setSaving]        = useState(null);
   const [resetLoading,  setResetLoading]  = useState(null);
   const [toggleLoading, setToggleLoading] = useState(null);
@@ -314,14 +315,22 @@ export function UsersPage() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, email, full_name, role, permissions, created_at, is_active')
-      .order('created_at', { ascending: false });
-
-    if (error) showToast('Kullanıcılar yüklenemedi: ' + error.message);
-    else setUsers(data || []);
-    setLoading(false);
+    setFetchError(null);
+    try {
+      const { data, error } = await withTimeout(
+        supabase
+          .from('profiles')
+          .select('id, email, full_name, role, permissions, created_at, is_active')
+          .order('created_at', { ascending: false }),
+        12000
+      );
+      if (error) throw error;
+      setUsers(data || []);
+    } catch (err) {
+      setFetchError(err.message || 'Bağlantı hatası');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -528,6 +537,14 @@ export function UsersPage() {
       <div style={{ background: 'var(--white)', border: '1px solid var(--border)', borderRadius: 'var(--r)', overflow: 'hidden', boxShadow: 'var(--sh)' }}>
         {loading ? (
           <div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>Yükleniyor...</div>
+        ) : fetchError ? (
+          <div style={{ padding: 32, textAlign: 'center' }}>
+            <div style={{ fontSize: 13, color: '#dc2626', marginBottom: 12 }}>⚠ {fetchError}</div>
+            <button
+              onClick={fetchData}
+              style={{ background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 6, padding: '8px 18px', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}
+            >Tekrar Dene</button>
+          </div>
         ) : users.length === 0 ? (
           <div style={{ padding: 32, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>Kullanıcı bulunamadı.</div>
         ) : (
