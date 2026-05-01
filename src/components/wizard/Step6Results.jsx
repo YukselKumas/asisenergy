@@ -92,7 +92,7 @@ const CostTable = memo(function CostTable({ result, kdvRate }) {
           </thead>
           <tbody>
             {['boru','vana','baglanti','mekanik'].map(cat => {
-              const its = result.lines.filter(i => i.cat === cat);
+              const its = (result.lines || []).filter(i => i.cat === cat);
               if (!its.length) return null;
               const catSum = its.reduce((s,i) => s+i.row, 0);
               return [
@@ -516,10 +516,10 @@ export function Step6Results({ goStep }) {
 
   // ── Excel ──────────────────────────────────────────────────────
   const exportExcel = useCallback(() => {
-    if (!result) return;
+    if (!result || !result.lines) return;
     const rows = [['KATEGORİ','MALZEMİ ADI','BİRİM','MİKTAR']];
     result.lines.forEach(it => rows.push([CAT_LABEL[it.cat]||it.cat, it.n, it.u, Math.ceil(it.qty)]));
-    rows.push([],['','KDV\'siz Toplam','₺', result.grandNet.toFixed(2)],['','KDV','₺', result.kdvAmt.toFixed(2)],['','Genel Toplam','₺', result.grandTotal.toFixed(2)]);
+    rows.push([],['','KDV\'siz Toplam','₺', (result.grandNet||0).toFixed(2)],['','KDV','₺', (result.kdvAmt||0).toFixed(2)],['','Genel Toplam','₺', (result.grandTotal||0).toFixed(2)]);
     const ws = XLSX.utils.aoa_to_sheet(rows);
     ws['!cols'] = [{wch:16},{wch:46},{wch:8},{wch:12}];
     const wb = XLSX.utils.book_new();
