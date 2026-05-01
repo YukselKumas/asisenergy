@@ -4,6 +4,11 @@
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase.js';
+
+const withTimeout = (p, ms) => Promise.race([
+  p,
+  new Promise((_, r) => setTimeout(() => r(new Error('Bağlantı zaman aşımı — sayfayı yenileyin')), ms)),
+]);
 import { useCalculationStore } from '../store/calculationStore.js';
 import { WizardShell } from '../components/wizard/WizardShell.jsx';
 
@@ -29,11 +34,10 @@ export function NewCalculationPage() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: err } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', projectId)
-        .single();
+      const { data, error: err } = await withTimeout(
+        supabase.from('projects').select('*').eq('id', projectId).single(),
+        10000
+      );
       if (err) throw err;
       loadProject(data);
     } catch (err) {

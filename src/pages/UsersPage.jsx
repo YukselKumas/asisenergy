@@ -13,6 +13,11 @@ import { useEffect, useState, useCallback } from 'react';
 import { supabase }        from '../lib/supabase.js';
 import { showToast }       from '../components/ui/Toast.jsx';
 import { GlassSelect }     from '../components/ui/GlassSelect.jsx';
+
+const withTimeout = (p, ms) => Promise.race([
+  p,
+  new Promise((_, r) => setTimeout(() => r(new Error('Bağlantı zaman aşımı — tekrar deneyin')), ms)),
+]);
 import { usePermissions }  from '../hooks/usePermissions.js';
 import { useAuthStore }    from '../store/authStore.js';
 import { MODULES }         from '../core/moduleRegistry.js';
@@ -323,37 +328,54 @@ export function UsersPage() {
 
   async function updateProfile(userId, patch) {
     setSaving(userId);
-    const { error } = await supabase.from('profiles').update(patch).eq('id', userId);
-    if (error) showToast('Hata: ' + error.message);
-    else {
+    try {
+      const { error } = await withTimeout(
+        supabase.from('profiles').update(patch).eq('id', userId),
+        8000
+      );
+      if (error) throw error;
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, ...patch } : u));
       showToast('Güncellendi ✓');
+    } catch (err) {
+      showToast('Hata: ' + (err.message || 'Bilinmeyen hata'));
+    } finally {
+      setSaving(null);
     }
-    setSaving(null);
   }
 
   async function sendPasswordReset(userId, email) {
     setResetLoading(userId);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + '/reset-password',
-    });
-    if (error) showToast('Hata: ' + error.message);
-    else showToast(`Şifre sıfırlama maili → ${email}`);
-    setResetLoading(null);
+    try {
+      const { error } = await withTimeout(
+        supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin + '/reset-password',
+        }),
+        8000
+      );
+      if (error) throw error;
+      showToast(`Şifre sıfırlama maili → ${email}`);
+    } catch (err) {
+      showToast('Hata: ' + (err.message || 'Bilinmeyen hata'));
+    } finally {
+      setResetLoading(null);
+    }
   }
 
   async function toggleActive(userId, currentlyActive) {
     setToggleLoading(userId);
-    const { error } = await supabase
-      .from('profiles')
-      .update({ is_active: !currentlyActive })
-      .eq('id', userId);
-    if (error) showToast('Hata: ' + error.message);
-    else {
+    try {
+      const { error } = await withTimeout(
+        supabase.from('profiles').update({ is_active: !currentlyActive }).eq('id', userId),
+        8000
+      );
+      if (error) throw error;
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_active: !currentlyActive } : u));
       showToast(currentlyActive ? 'Kullanıcı pasife alındı' : 'Kullanıcı aktif edildi');
+    } catch (err) {
+      showToast('Hata: ' + (err.message || 'Bilinmeyen hata'));
+    } finally {
+      setToggleLoading(null);
     }
-    setToggleLoading(null);
   }
 
   async function handleAddUser(e) {
