@@ -24,7 +24,7 @@ export function calcCouplings(pipe) {
     const L = pipe[d] || 0;
     if (L > 0) {
       const mId = 'm' + d.replace('q', '');
-      result[mId] = (result[mId] || 0) + Math.floor(L / 4);
+      result[mId] = (result[mId] || 0) + Math.max(0, Math.ceil(L / 4) - 1);
     }
   });
   return result;

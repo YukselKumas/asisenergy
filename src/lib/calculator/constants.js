@@ -21,6 +21,8 @@ export const DIAM_LABEL = {
 export function productBrandCat(id) {
   if (id.startsWith('pir-v')) return 'valve';   // pirinç küresel vana
   if (id.startsWith('bd-'))  return 'bd';       // basınç düşürücü
+  if (id.startsWith('komp-'))return 'ppr';      // PPR genleşme kompansatörü
+  if (id.startsWith('iz-'))  return 'ppr';      // boru izolasyonu
   if (/^f\d/.test(id))       return 'filter';   // filtre (f34, f1, f114, ...)
   if (id.startsWith('cv'))   return 'filter';   // çekvalf
   if (id === 'pump' || id === 'mano' || id === 'air') return 'other';

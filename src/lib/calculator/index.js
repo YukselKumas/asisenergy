@@ -15,6 +15,13 @@ import { pirVanaId }                                         from './kollector.j
 import { pprVanaId, applyHidroforToQty, applyBoylerToQty, applyBdToQty, applyFixedMechToQty } from './mechanical.js';
 import { calcCost }                                          from './cost.js';
 import { PRICES }                                            from './constants.js';
+import { clampSpacing }                                      from './standards.js';
+import { analyzeCirculation }                                from './circulation.js';
+import { pressureBudget }                                    from './pressure.js';
+import { calcExpansionRequirements, summarizeExpansion }     from './expansion.js';
+import { applyInsulationToQty }                              from './insulation.js';
+import { analyzeHygiene }                                    from './hygiene.js';
+import { buildVelocityChecks }                               from './sizing.js';
 
 /**
  * Ana hesaplama fonksiyonu.
@@ -46,6 +53,14 @@ export function calculate(config, priceOverride = {}) {
     hotDownFloors, hotDownDiam,
     coldDownFloors, coldDownDiam,
     blokSayisi,
+    // Mühendislik parametreleri
+    inletPressure_bar  = 4.0,
+    ambientTemp_C      = 20,
+    hotWaterTemp_C     = 60,
+    circReturnTemp_C   = 55,
+    coldMaxTemp_C      = 25,
+    pipeMaterial       = 'ppr',
+    insulationEnabled  = true,
   } = config;
 
   // Çok binalı destek: shaft = bina başına şaft; totalShaft = tüm binaların toplam şaft sayısı
@@ -289,8 +304,7 @@ export function calculate(config, priceOverride = {}) {
   if (hasCold) addJunctionFittings(coldEndDiam, coldDownDiam || 'q50', coldDownFloors || 0);
 
   // ── 10b. Kelepçe — tüm boru hatları (yatay + dikey + aşağı inen) ─
-  // spacing = kelepceSpacing config değeri (varsayılan 4m)
-  const spacing = kelepceSpacing || 4;
+  // Çapa ve hat tipine göre dinamik kelepçe aralığı (standards.js clampSpacing)
   const kelepMap = {}; // diam → toplam metre (kelepçe hesabı için)
   const addKelep = (d, m) => { if (d && m > 0) kelepMap[d] = (kelepMap[d] || 0) + m; };
 
@@ -322,12 +336,17 @@ export function calculate(config, priceOverride = {}) {
   if (hasHot  && (hotDownFloors  || 0) > 0) addKelep(hotDownDiam  || 'q50', (hotDownFloors  || 0) * (floorH || 4) * totalShaft);
   if (hasCold && (coldDownFloors || 0) > 0) addKelep(coldDownDiam || 'q50', (coldDownFloors || 0) * (floorH || 4) * totalShaft);
 
-  // Kelepçe adet → QTY
+  // Kelepçe adet → QTY (dinamik çap/hat bazlı aralık)
   let totalClamps = 0;
   Object.entries(kelepMap).forEach(([d, m]) => {
     if (m > 0) {
-      const kId = 'kelep' + d.slice(1);
-      const cnt = Math.ceil(m / spacing);
+      const kId    = 'kelep' + d.slice(1);
+      // Sıcak/sirkülasyon hattı mı? — Kelepçe haritasında ayrışmadığından
+      // hem yatay hem dikey karışık; en güvenli: kelepceSpacing config yoksa clampSpacing kullan
+      const dynSpacing = kelepceSpacing
+        ? kelepceSpacing
+        : clampSpacing(d, { isHot: hasHot || hasCirc, isVert: false, material: pipeMaterial });
+      const cnt = Math.ceil(m / dynSpacing);
       totalClamps += cnt;
       if (QTY[kId] !== undefined) QTY[kId] = (QTY[kId] || 0) + cnt;
     }
@@ -337,6 +356,125 @@ export function calculate(config, priceOverride = {}) {
   QTY['dubel']  = (QTY['dubel']  || 0) + totalClamps;
   QTY['civata'] = (QTY['civata'] || 0) + totalClamps;
   QTY['pul']    = (QTY['pul']    || 0) + totalClamps * 2;
+
+  // ── 10c. İzolasyon — GEG Anlage 8 ───────────────────────────────
+  let insulationSummary = null;
+  if (insulationEnabled && (hasHot || hasCirc)) {
+    // Sıcak hat borusu ve sirkülasyon hattı borusu
+    const hotPipeMap  = {};
+    const circPipeMapIns = {};
+    if (hasHot) {
+      [[hyHotStart, hyHotL1],[hyHotD2, hyHotL2],[hyHotD3, hyHotL3]].forEach(([d,l]) => {
+        if (d && l > 0) hotPipeMap[d] = (hotPipeMap[d]||0) + l * blokMult;
+      });
+      allSegs.forEach(s => { hotPipeMap[s.diam] = (hotPipeMap[s.diam]||0) + s.m * totalShaft; });
+      if (brDiam) hotPipeMap[brDiam] = (hotPipeMap[brDiam]||0) + brHot * totalFlats;
+    }
+    if (hasCirc && circDiam) {
+      circPipeMapIns[circDiam] = (circYatay || 0) * blokMult + autoCircDikey * totalShaft;
+    }
+    insulationSummary = applyInsulationToQty(QTY, hotPipeMap, circPipeMapIns, {});
+  }
+
+  // ── 10d. Termal genleşme & kompansatör ───────────────────────────
+  let expansionSummary = null;
+  if (hasHot || hasCirc) {
+    const INSTALL_TEMP = ambientTemp_C;
+    const OPERATING_TEMP = hotWaterTemp_C;
+    const deltaT = OPERATING_TEMP - INSTALL_TEMP;
+    // Ana yatay hatları segment olarak oluştur
+    const expSegments = [];
+    if (hasHot) {
+      if (hyHotStart && (hyHotL1 || 0) > 0) expSegments.push({ diam: hyHotStart, length_m: (hyHotL1||0) * blokMult });
+      if (hyHotD2  && (hyHotL2 || 0) > 0) expSegments.push({ diam: hyHotD2,    length_m: (hyHotL2||0) * blokMult });
+      if (hyHotD3  && (hyHotL3 || 0) > 0) expSegments.push({ diam: hyHotD3,    length_m: (hyHotL3||0) * blokMult });
+    }
+    if (hasCirc && circDiam) expSegments.push({ diam: circDiam, length_m: (circYatay || 0) * blokMult });
+    allSegs.forEach(s => {
+      if (hasHot) expSegments.push({ diam: s.diam, length_m: s.m * totalShaft });
+    });
+
+    if (expSegments.length > 0) {
+      const expData = calcExpansionRequirements(expSegments, deltaT, pipeMaterial);
+      expansionSummary = summarizeExpansion(expData);
+      // Kompansatörler QTY'ye ekle (komp-{diam} şeklinde dinamik ID)
+      Object.entries(expansionSummary.byDiam || {}).forEach(([d, cnt]) => {
+        if (cnt > 0) {
+          const kompId = 'komp-' + d;
+          QTY[kompId] = (QTY[kompId] || 0) + cnt;
+        }
+      });
+    }
+  }
+
+  // ── 10e. Sirkülasyon analizi — DVGW W 553 ────────────────────────
+  let circulationAnalysis = null;
+  if (hasCirc) {
+    const hotPipeForCirc  = {};
+    const circPipeForCirc = {};
+    if (hasHot) {
+      [[hyHotStart, hyHotL1],[hyHotD2, hyHotL2],[hyHotD3, hyHotL3]].forEach(([d,l]) => {
+        if (d && l > 0) hotPipeForCirc[d] = (hotPipeForCirc[d]||0) + l * blokMult;
+      });
+      allSegs.forEach(s => { hotPipeForCirc[s.diam] = (hotPipeForCirc[s.diam]||0) + s.m * totalShaft; });
+    }
+    if (circDiam) circPipeForCirc[circDiam] = (circYatay || 0) * blokMult + autoCircDikey * totalShaft;
+    circulationAnalysis = analyzeCirculation(hotPipeForCirc, circPipeForCirc, insulationEnabled);
+  }
+
+  // ── 10f. Basınç bütçesi — Darcy-Weisbach ─────────────────────────
+  let pressureAnalysis = null;
+  {
+    const buildingH = allSegs.length > 0
+      ? allSegs[allSegs.length - 1].katTo * (floorH || 3.5)
+      : 0;
+    const pipeMapForPressure = {};
+    if (hasHot) {
+      [[hyHotStart, hyHotL1],[hyHotD2, hyHotL2],[hyHotD3, hyHotL3]].forEach(([d,l]) => {
+        if (d && l > 0) pipeMapForPressure[d] = (pipeMapForPressure[d]||0) + l;
+      });
+    } else if (hasCold) {
+      [[hyColdStart, hyColdL1],[hyColdD2, hyColdL2],[hyColdD3, hyColdL3]].forEach(([d,l]) => {
+        if (d && l > 0) pipeMapForPressure[d] = (pipeMapForPressure[d]||0) + l;
+      });
+    }
+    allSegs.forEach(s => {
+      pipeMapForPressure[s.diam] = (pipeMapForPressure[s.diam]||0) + s.m;
+    });
+    pressureAnalysis = pressureBudget({
+      inletPressure_bar,
+      buildingHeight_m: buildingH,
+      pipeMap:          pipeMapForPressure,
+      velocityByDiam:   {},
+      fittingCounts:    {},
+      hot:              hasHot,
+    });
+  }
+
+  // ── 10g. Hız kontrolleri — DIN 1988-300 ──────────────────────────
+  let velocityChecks = null;
+  {
+    const pipeMapAll = {};
+    DIAM_ORDER.forEach(d => { if ((pipe[d] || 0) > 0) pipeMapAll[d] = pipe[d]; });
+    velocityChecks = buildVelocityChecks(pipeMapAll, totalFlats, {
+      hasHot, hasCold, hasCirc,
+    });
+  }
+
+  // ── 10h. Hijyen analizi — VDI 6023 ───────────────────────────────
+  const hygieneAnalysis = analyzeHygiene({
+    storageTemp_C:      hotWaterTemp_C,
+    returnTemp_C:       circReturnTemp_C,
+    coldMax_C:          coldMaxTemp_C,
+    hasCirc,
+    branchDiam:         brDiam || 'q25',
+    branchLen_m:        (brHot || 2),
+    inletPressure_bar,
+    buildingHeight_m:   allSegs.length > 0 ? allSegs[allSegs.length - 1].katTo * (floorH || 3.5) : 0,
+    zones:              activeZones,
+    floorH:             floorH || 3.5,
+    shaftFloor:         shaftStart,
+  });
 
   // ── 11. Maliyet ───────────────────────────────────────────────────
   const { lines, grandNet, kdvAmt, grandTotal } = calcCost(QTY, priceOverride, kdvRate);
@@ -369,5 +507,12 @@ export function calculate(config, priceOverride = {}) {
     totalFlats,
     shaftVanaTotal: shaftVanaAdet * totalShaft * svHatlar,
     flatValve: dValveInQ + dValveQ,
+    // Bilimsel analiz çıktıları
+    insulationSummary,
+    expansionSummary,
+    circulationAnalysis,
+    pressureAnalysis,
+    velocityChecks,
+    hygieneAnalysis,
   };
 }

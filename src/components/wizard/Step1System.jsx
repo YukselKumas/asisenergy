@@ -371,6 +371,56 @@ export function Step1System({ goStep }) {
         </div>
       </Card>
 
+      {/* Mühendislik Parametreleri */}
+      <Card accent="acc" title="Mühendislik Parametreleri" badge="7">
+        <p style={{ fontSize:12, color:'var(--muted)', marginBottom:14 }}>
+          Bilimsel hesaplama modülleri için sistem parametreleri (basınç bütçesi, izolasyon, genleşme, hijyen).
+        </p>
+        <div className="g g4">
+          <Field label="Bina Giriş Basıncı (bar)" hint="Tipik 3–6 bar">
+            <input
+              type="number" step="0.1" min="0.5" max="16"
+              value={c.inletPressure_bar ?? 4.0}
+              onChange={e => updN('inletPressure_bar', e.target.value)}
+            />
+          </Field>
+          <Field label="Ortam / Montaj Sıcaklığı (°C)" hint="Genleşme hesabı için">
+            <input
+              type="number" step="1" min="-10" max="40"
+              value={c.ambientTemp_C ?? 20}
+              onChange={e => updN('ambientTemp_C', e.target.value)}
+            />
+          </Field>
+          <Field label="Sıcak Su Dağıtım Sıcaklığı (°C)" hint="VDI 6023: ≥60°C">
+            <input
+              type="number" step="1" min="40" max="90"
+              value={c.hotWaterTemp_C ?? 60}
+              onChange={e => updN('hotWaterTemp_C', e.target.value)}
+            />
+          </Field>
+          <Field label="Sirkülasyon Dönüş Sıcaklığı (°C)" hint="DVGW W 551: ≥55°C">
+            <input
+              type="number" step="1" min="40" max="80"
+              value={c.circReturnTemp_C ?? 55}
+              onChange={e => updN('circReturnTemp_C', e.target.value)}
+            />
+          </Field>
+          <Field label="Boru Malzemesi" hint="Genleşme katsayısı için">
+            <GlassSelect value={c.pipeMaterial ?? 'ppr'} onChange={e => upd('pipeMaterial', e.target.value)}>
+              <option value="ppr">PP-R PN20 (α=0.15 mm/m·K)</option>
+              <option value="pprct">PP-RCT (α=0.13 mm/m·K)</option>
+              <option value="pprfb">PP-R FB Fiber (α=0.04 mm/m·K)</option>
+            </GlassSelect>
+          </Field>
+          <Field label="GEG İzolasyon Hesabı" hint="Boru yalıtım miktarı QTY'ye eklenir">
+            <GlassSelect value={c.insulationEnabled ? 'evet' : 'hayir'} onChange={e => upd('insulationEnabled', e.target.value === 'evet')}>
+              <option value="evet">Aktif — GEG Anlage 8</option>
+              <option value="hayir">Pasif</option>
+            </GlassSelect>
+          </Field>
+        </div>
+      </Card>
+
       <div className="btn-row">
         <Button variant="primary" onClick={() => {
           if (!c.markaPpr)      { showToast('⚠ PPR Boru & Bağlantı markası seçilmemiş.'); return; }
