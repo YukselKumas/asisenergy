@@ -73,6 +73,7 @@ export function DashboardPage() {
   }
 
   function openProject(p) {
+    if (!p?.id) return;
     loadProject(p);
     navigate(`/hesaplama/${p.id}`);
   }
