@@ -33,17 +33,21 @@ export function DashboardPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
+    const doFetch = () => withTimeout(
+      supabase
+        .from('projects')
+        .select('id,name,building_name,status,created_at,result,parent_project_id')
+        .order('created_at', { ascending: false })
+        .limit(40),
+      25000
+    );
     try {
-      const { data, error: err } = await withTimeout(
-        supabase
-          .from('projects')
-          .select('id,name,building_name,status,created_at,result,parent_project_id')
-          .order('created_at', { ascending: false })
-          .limit(40),
-        10000
-      );
-      if (err) throw err;
-      setProjects(data || []);
+      let res = await doFetch().catch(async err => {
+        await new Promise(r => setTimeout(r, 2000));
+        return doFetch();
+      });
+      if (res.error) throw res.error;
+      setProjects(res.data || []);
     } catch (err) {
       setError(err.message || 'Projeler yüklenemedi');
     } finally {

@@ -37,7 +37,7 @@ export const useDefinitionsStore = create((set, get) => ({
     try {
       const { data, error } = await withTimeout(
         supabase.from('brands').select('*').eq('is_active', true).order('name'),
-        12000
+        25000
       );
       if (error) throw error;
       set({ brands: data || [], brandsError: null });
@@ -153,7 +153,7 @@ export const useDefinitionsStore = create((set, get) => ({
     try {
       const { data, error } = await withTimeout(
         supabase.from('price_lists').select('*').eq('brand_id', brandId).eq('is_active', true).order('product_id'),
-        10000
+        25000
       );
       if (error) throw error;
       set({ priceLists: data || [] });
