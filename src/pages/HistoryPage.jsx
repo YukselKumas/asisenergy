@@ -206,13 +206,18 @@ export function HistoryPage() {
 
   const fetchProjects = useCallback(async () => {
     setLoading(true); setFetchError(null);
+    const doFetch = () => withTimeout(
+      supabase.from('projects').select('*').order('created_at', { ascending: false }),
+      25000
+    );
     try {
-      const { data, error } = await withTimeout(
-        supabase.from('projects').select('*').order('created_at', { ascending: false }),
-        10000
-      );
-      if (error) throw error;
-      setProjects(data || []);
+      let res = await doFetch().catch(async err => {
+        // Cold-start retry: ilk timeout'tan sonra 2sn bekle, bir kez daha dene
+        await new Promise(r => setTimeout(r, 2000));
+        return doFetch();
+      });
+      if (res.error) throw res.error;
+      setProjects(res.data || []);
     } catch (err) {
       setFetchError(err.message || 'Projeler yüklenemedi');
     } finally {

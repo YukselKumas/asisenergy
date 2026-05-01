@@ -316,16 +316,20 @@ export function UsersPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     setFetchError(null);
+    const doFetch = () => withTimeout(
+      supabase
+        .from('profiles')
+        .select('id, email, full_name, role, permissions, created_at, is_active')
+        .order('created_at', { ascending: false }),
+      25000
+    );
     try {
-      const { data, error } = await withTimeout(
-        supabase
-          .from('profiles')
-          .select('id, email, full_name, role, permissions, created_at, is_active')
-          .order('created_at', { ascending: false }),
-        12000
-      );
-      if (error) throw error;
-      setUsers(data || []);
+      let res = await doFetch().catch(async err => {
+        await new Promise(r => setTimeout(r, 2000));
+        return doFetch();
+      });
+      if (res.error) throw res.error;
+      setUsers(res.data || []);
     } catch (err) {
       setFetchError(err.message || 'Bağlantı hatası');
     } finally {
