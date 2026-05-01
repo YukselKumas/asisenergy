@@ -13,7 +13,7 @@ export function App() {
   // Uygulama açılışında Supabase oturum dinleyicisini başlat
   useEffect(() => {
     init();
-  }, []);
+  }, [init]);
 
   return (
     <>

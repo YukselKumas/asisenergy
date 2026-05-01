@@ -104,6 +104,7 @@ export const useDefinitionsStore = create((set, get) => ({
   },
 
   seedBrandFromConstants: async (brandId, sourceOverrides = null) => {
+    if (!brandId) throw new Error('Brand ID gerekli');
     const rows = PRICES.map(p => {
       const ov = sourceOverrides?.[p.id];
       return {
@@ -165,7 +166,7 @@ export const useDefinitionsStore = create((set, get) => ({
 
   fetchSystemConfigs: async () => {
     const { data, error } = await supabase.from('system_configs').select('*');
-    if (error) return;
+    if (error) { console.error('[definitions] fetchSystemConfigs:', error.message); return; }
     const configs = {};
     (data || []).forEach(row => {
       try { configs[row.key] = JSON.parse(row.value); }

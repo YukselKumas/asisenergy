@@ -243,7 +243,10 @@ function PriceListTab() {
   /** Görünen ürünlerin liste fiyatını % artır/azalt */
   function applyBulkPct() {
     const pct = parseFloat(bulkPct);
-    if (isNaN(pct)) { showToast('Geçerli bir yüzde değeri girin'); return; }
+    if (isNaN(pct) || !isFinite(pct) || pct < -99 || pct > 10000) {
+      showToast('Geçerli bir yüzde değeri girin (-99 ile 10000 arası)');
+      return;
+    }
     const visible = PRICES.filter(p => catFilter === 'Tümü' || CAT_MAP[p.cat] === catFilter);
     const mult = 1 + pct / 100;
     setLocalP(prev => {

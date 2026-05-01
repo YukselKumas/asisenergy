@@ -6,6 +6,9 @@
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase.js';
 
+// Listener yalnızca bir kez kaydedilir; birden fazla init() çağrısında sızmaz.
+let _authUnsubscribe = null;
+
 export const useAuthStore = create((set, get) => ({
   // ── State ──────────────────────────────────────────────────────────
   user:    null,   // Supabase auth user nesnesi
@@ -28,14 +31,17 @@ export const useAuthStore = create((set, get) => ({
       set({ loading: false });
     }
 
-    supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user) {
-        set({ user: session.user });
-        await get().fetchProfile(session.user.id);
-      } else {
-        set({ user: null, profile: null });
-      }
-    });
+    if (!_authUnsubscribe) {
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+        if (session?.user) {
+          set({ user: session.user });
+          await get().fetchProfile(session.user.id);
+        } else {
+          set({ user: null, profile: null });
+        }
+      });
+      _authUnsubscribe = subscription.unsubscribe;
+    }
   },
 
   signIn: async (email, password) => {

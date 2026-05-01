@@ -388,10 +388,14 @@ export function UsersPage() {
 
       // Süper admin oturumunu geri yükle
       if (prevSession) {
-        await supabase.auth.setSession({
+        const { error: restoreErr } = await supabase.auth.setSession({
           access_token:  prevSession.access_token,
           refresh_token: prevSession.refresh_token,
         });
+        if (restoreErr) {
+          console.error('[UsersPage] Oturum geri yüklenemedi:', restoreErr.message);
+          showToast('Yönetici oturumu geri yüklenemedi, lütfen tekrar giriş yapın.');
+        }
       }
 
       showToast(`${newUser.full_name} eklendi ✓`);

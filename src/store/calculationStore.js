@@ -387,7 +387,7 @@ export const useCalculationStore = create((set, get) => ({
   /** Hesaplama geçmişine kayıt ekle */
   saveHistory: async (userId, result) => {
     const { config, projectId } = get();
-    if (!projectId) return;
+    if (!projectId || !userId) return;
 
     await supabase.from('calculation_history').insert({
       project_id: projectId,

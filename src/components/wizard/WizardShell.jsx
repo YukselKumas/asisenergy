@@ -47,6 +47,7 @@ export function WizardShell() {
   }
 
   const Panel = PANELS[step];
+  if (!Panel) return <div style={{ padding: 32, color: 'var(--red)' }}>Adım yüklenemedi.</div>;
 
   return (
     <div>

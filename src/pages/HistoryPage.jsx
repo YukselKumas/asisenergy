@@ -5,7 +5,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase.js';
 import { useCalculationStore } from '../store/calculationStore.js';
 import { useAuthStore }        from '../store/authStore.js';
-import { Button } from '../components/ui/Button.jsx';
+import { Button }    from '../components/ui/Button.jsx';
+import { showToast } from '../components/ui/Toast.jsx';
 
 const TR  = (x, d=0) => new Intl.NumberFormat('tr-TR', { minimumFractionDigits:d, maximumFractionDigits:d }).format(x ?? 0);
 const withTimeout = (p, ms) => Promise.race([p, new Promise((_, r) => setTimeout(() => r(new Error('Bağlantı zaman aşımı')), ms))]);
@@ -196,6 +197,7 @@ export function HistoryPage() {
   const [fetchError,   setFetchError]   = useState(null);
   const [expanded,     setExpanded]     = useState({});   // parentId → bool
   const [compareId,    setCompareId]    = useState(null); // parentId → karşılaştırma modal
+  const [deleting,     setDeleting]     = useState(null); // silinen proje id'si
 
   const { loadProject, editProject, startRevision } = useCalculationStore();
   const isAdmin  = useAuthStore(s => s.isAdmin);
@@ -222,8 +224,23 @@ export function HistoryPage() {
 
   async function deleteProject(id) {
     if (!confirm('Bu projeyi ve tüm varyasyonlarını silmek istediğinizden emin misiniz?')) return;
-    await supabase.from('projects').delete().eq('id', id);
-    setProjects(p => p.filter(x => x.id !== id && x.parent_project_id !== id));
+    setDeleting(id);
+    try {
+      // Önce child varyasyonları sil (orphan önleme)
+      const children = childrenOf[id] || [];
+      if (children.length > 0) {
+        const childIds = children.map(c => c.id);
+        const { error: childErr } = await supabase.from('projects').delete().in('id', childIds);
+        if (childErr) throw childErr;
+      }
+      const { error } = await supabase.from('projects').delete().eq('id', id);
+      if (error) throw error;
+      setProjects(p => p.filter(x => x.id !== id && x.parent_project_id !== id));
+    } catch (err) {
+      showToast('Silme hatası: ' + err.message);
+    } finally {
+      setDeleting(null);
+    }
   }
 
   function viewProject(project) {
@@ -379,9 +396,11 @@ export function HistoryPage() {
               )}
 
               {admin && (
-                <button onClick={() => deleteProject(p.id)}
-                  style={{ background:'var(--bg)', color:'var(--red)', border:'1px solid var(--border)', borderRadius:999, padding:'4px 10px', fontSize:11, cursor:'pointer' }}>
-                  Sil
+                <button
+                  onClick={() => deleteProject(p.id)}
+                  disabled={deleting === p.id}
+                  style={{ background:'var(--bg)', color:'var(--red)', border:'1px solid var(--border)', borderRadius:999, padding:'4px 10px', fontSize:11, cursor: deleting === p.id ? 'not-allowed' : 'pointer', opacity: deleting === p.id ? 0.5 : 1 }}>
+                  {deleting === p.id ? '...' : 'Sil'}
                 </button>
               )}
             </div>
